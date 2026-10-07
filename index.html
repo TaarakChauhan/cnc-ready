@@ -1,0 +1,3496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="description" content="CNC Ready is a small machine-shop tycoon. Carry stock, run the mills, serve clients, and grow the factory.">
+<meta name="theme-color" content="#8eafc8">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>CNC Ready</title>
+<style>
+  :root { --ink:#1b2430; --line:#d5dee8; --accent:#ff8a1d; --good:#128a4a; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { margin:0; height:100%; overflow:hidden; background:#8eafc8; color:var(--ink);
+    font-family:"Avenir Next","Trebuchet MS",system-ui,sans-serif; touch-action:none; }
+  canvas { display:block; width:100%; height:100%; cursor:crosshair; }
+  #ui { position:fixed; inset:0; pointer-events:none; z-index:2; }
+  #ui button, #ui .sheet, #ui .modal, #joy { pointer-events:auto; }
+  #top { position:absolute; top:max(8px, env(safe-area-inset-top)); left:8px; right:8px;
+    display:flex; gap:6px; align-items:stretch; }
+  .pill { background:#fff; border-radius:14px; box-shadow:0 3px 0 var(--line);
+    padding:6px 10px; font-weight:800; line-height:1.15; }
+  #cash-pill { font-size:22px; min-width:92px; display:flex; align-items:center; }
+  #cash-pill.pop { animation:pop .22s ease; }
+  @keyframes pop { 50% { transform:scale(1.12); } }
+  #meta { font-size:12px; display:flex; flex-direction:column; justify-content:center; }
+  #zone-pill { margin-left:auto; text-align:right; font-size:12px; display:flex; flex-direction:column; justify-content:center; }
+  #goal { position:absolute; top:62px; left:50%; transform:translateX(-50%);
+    background:#1d2a3a; color:#fff; border-radius:999px; padding:6px 12px; font-size:12px;
+    font-weight:700; max-width:94vw; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #tip { position:absolute; left:50%; top:calc(96px + env(safe-area-inset-top));
+    transform:translateX(-50%); background:#fff8e7; border:3px solid #ffb703; border-radius:16px;
+    padding:8px 12px; font-weight:800; max-width:min(420px, 88vw); text-align:center;
+    box-shadow:0 5px 0 #f0d48a; }
+  #tip:empty { display:none; }
+  #order-chip { position:absolute; left:10px; bottom:calc(148px + env(safe-area-inset-bottom));
+    background:#fff; border-radius:14px; padding:8px 10px; font-weight:800; font-size:13px;
+    box-shadow:0 3px 0 var(--line); display:flex; gap:8px; align-items:center; max-width:58vw; }
+  #swatch { width:14px; height:14px; border-radius:4px; background:#ccc; flex:none; }
+  #btns { position:absolute; right:10px; bottom:calc(14px + env(safe-area-inset-bottom));
+    display:flex; flex-direction:column; gap:8px; }
+  button { font-family:inherit; }
+  .btn { border:0; border-radius:14px; font-weight:800; font-size:15px; padding:12px 14px;
+    background:#fff; color:var(--ink); box-shadow:0 4px 0 var(--line); }
+  #btn-up { background:var(--accent); color:#fff; box-shadow:0 4px 0 #d86a00; }
+  #joy { position:absolute; left:16px; bottom:calc(16px + env(safe-area-inset-bottom));
+    width:120px; height:120px; border-radius:50%; background:rgba(255,255,255,.28);
+    border:3px solid rgba(255,255,255,.75); touch-action:none; z-index:3; }
+  #knob { width:54px; height:54px; border-radius:50%; background:#fff; position:absolute;
+    left:30px; top:30px; box-shadow:0 4px 10px rgba(0,0,0,.18); }
+  .sheet { position:absolute; left:50%; bottom:0; transform:translateX(-50%); width:min(540px,100%);
+    max-height:min(72vh, 680px); overflow:auto; background:#f4f7fb; border-radius:22px 22px 0 0;
+    box-shadow:0 -10px 30px rgba(0,0,0,.2); padding:12px 12px calc(14px + env(safe-area-inset-bottom)); }
+  .sheet h2 { margin:4px 8px 10px; font-size:18px; }
+  .sheet-head { display:flex; align-items:center; }
+  .sheet-head button { margin-left:auto; }
+  .row { display:flex; gap:10px; align-items:center; background:#fff; border-radius:14px;
+    padding:10px; margin-bottom:8px; }
+  .row b { display:block; }
+  .row span { display:block; font-size:12px; font-weight:600; color:#526173; }
+  .buy { margin-left:auto; background:var(--good); color:#fff; border:0; border-radius:12px;
+    font-weight:800; padding:10px 12px; box-shadow:0 3px 0 #0d6e38; white-space:nowrap; }
+  .buy:disabled { background:#c5ced6; color:#55616c; box-shadow:none; }
+  #milestone, .modal { position:absolute; left:50%; top:34%; transform:translate(-50%,-50%) scale(.92);
+    background:#fff; border-radius:22px; padding:20px 22px; text-align:center; width:min(420px,90vw);
+    box-shadow:0 10px 0 var(--line), 0 18px 40px rgba(0,0,0,.16); opacity:0; pointer-events:none; }
+  #milestone.show, .modal.show { opacity:1; transform:translate(-50%,-50%) scale(1); pointer-events:auto; transition:.2s; }
+  #milestone h2, .modal h2 { margin:0 0 6px; }
+  #milestone p, .modal p { margin:0; font-weight:650; color:#3d4b5c; }
+  .modal .choices { display:flex; gap:8px; justify-content:center; margin-top:14px; }
+  #floats { position:absolute; inset:0; overflow:hidden; pointer-events:none; }
+  .float { position:absolute; font-weight:900; font-size:20px; color:var(--good); text-shadow:0 2px 0 #fff; }
+  #boot-error { position:fixed; inset:0; background:#fff; color:#8d1d1d; padding:16px; z-index:9; white-space:pre-wrap; }
+  #start-card { position:absolute; left:50%; top:46%; transform:translate(-50%,-50%); width:min(440px,92vw);
+    background:#fff; border-radius:24px; padding:22px; text-align:center; box-shadow:0 12px 0 #d5dee8;
+    pointer-events:auto; }
+  #start-card p { font-weight:650; color:#3c4a5a; }
+  #save-note { font-size:12px; font-weight:700; color:#5c6b7c; }
+  #start-card .btn { width:100%; }
+  .fine-hint { display:none; font-size:12px; font-weight:700; color:#5c6b7c; margin-top:8px; }
+  @media (pointer:fine) { #joy { display:none; } .fine-hint { display:block; }
+    #order-chip { bottom:calc(18px + env(safe-area-inset-bottom)); } }
+</style>
+</head>
+<body>
+<div id="ui">
+  <div id="top">
+    <div class="pill" id="cash-pill">$0</div>
+    <div class="pill" id="meta">Lv 1<br>Carry 0/4</div>
+    <div class="pill" id="zone-pill">Garage<br>x1</div>
+  </div>
+  <div id="goal">Next: grab stock and run the mill</div>
+  <div id="tip"></div>
+  <div id="order-chip"><i id="swatch"></i><div id="order-text">Waiting for a client…</div></div>
+  <div id="btns">
+    <button class="btn" id="btn-sound" type="button">Sound on</button>
+    <button class="btn" id="btn-up" type="button">Upgrades</button>
+  </div>
+  <div id="sheet" class="sheet" hidden>
+    <div class="sheet-head"><h2>Shop upgrades</h2><button class="btn" id="btn-close" type="button">Close</button></div>
+    <div id="sheet-body"></div>
+  </div>
+  <div id="milestone"><h2></h2><p></p></div>
+  <div id="modal" class="modal"><h2></h2><p></p><div class="choices">
+    <button class="btn" id="modal-no" type="button">Not yet</button>
+    <button class="btn" id="modal-yes" type="button" style="background:#ff8a1d;color:#fff">Open it</button>
+  </div></div>
+  <div id="start-card">
+    <h2>CNC Ready</h2>
+    <p id="start-lead">Run the machine shop. Grab stock, machine a part, serve the client, then spend the cash on a glowing pad.</p>
+    <p class="fine-hint">Click the floor to walk there. Drag to steer. WASD or arrow keys work too. Tap a machine to change its job.</p>
+    <p id="save-note">Progress saves on this device. Parts in your hands do not.</p>
+    <button class="btn" id="btn-start" type="button" style="background:#ff8a1d;color:#fff">Start the shift</button>
+  </div>
+  <div id="floats"></div>
+</div>
+<div id="joy"><div id="knob"></div></div>
+<script>
+window.onerror = function (msg, src, line, col, err) {
+  var el = document.getElementById('boot-error');
+  if (!el) {
+    el = document.createElement('pre');
+    el.id = 'boot-error';
+    document.body.appendChild(el);
+  }
+  var detail = String(msg) + ' @' + line + ':' + col + '\n' + (err && err.stack ? err.stack : '');
+  if (!el.textContent || el.textContent.indexOf('Script error') === 0) el.textContent = detail;
+  else el.textContent += '\n' + detail;
+};
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.0/three.min.js"></script>
+<script>
+'use strict';
+/*
+  CNC Ready — Pizza Ready loop in a machine shop.
+  Balance lives in CONFIG: prices, cycle times, unlock costs, upgrade curves.
+  Tester progress (cash, unlocks, crew, prestige) is saved in localStorage.
+  The ?test=1 harness does not read or write that save.
+*/
+
+const TESTING = location.search.indexOf('test=1') >= 0;
+const CONFIG = {
+  startCash: 5,
+  player: { speed: 6.3, radius: 0.42, carry: 4 },
+  transfer: 0.10,
+  interact: 0.84,
+  cam: { x: 17, y: 24, z: 17, fov: 42, lookZ: 1.25 },
+  deburrMult: 1.55,
+  inspectTip: 0.28,
+  crateBonus: 1.8,
+  cutSpeed: 0.7,
+  prestigeStep: 0.25,
+  prestigeGate: 10000,
+  parts: {
+    bracket:  { name: 'Aluminum Bracket', price: 8,  time: 2.3,  color: '#dfe6ea' },
+    shaft:    { name: 'Steel Shaft',      price: 18, time: 3.4,  color: '#6d7b86' },
+    flange:   { name: 'Flange',           price: 26, time: 4.0,  color: '#d4a373' },
+    gear:     { name: 'Gear',             price: 42, time: 3.2,  color: '#f4b942' },
+    housing:  { name: 'Engine Housing',   price: 74, time: 7.2,  color: '#3d5a80' },
+    impeller: { name: 'Turbine Impeller', price: 160, time: 11.5, color: '#1abc9c' }
+  },
+  upgrades: [
+    { id: 'speed', name: 'Move Speed', max: 8, base: 25, growth: 1.62, blurb: 'Faster steps' },
+    { id: 'carry', name: 'Carry Capacity', max: 8, base: 35, growth: 1.7, blurb: '+1 item in the stack' },
+    { id: 'spindle', name: 'Spindle Speed', max: 10, base: 45, growth: 1.58, blurb: 'Shorter cycle time' },
+    { id: 'output', name: 'Parts / Cycle', max: 3, base: 140, growth: 2.05, blurb: '+1 part each cycle' },
+    { id: 'price', name: 'Sell Price', max: 8, base: 60, growth: 1.72, blurb: '+15% payout' },
+    { id: 'clients', name: 'Client Flow', max: 6, base: 55, growth: 1.68, blurb: 'Quicker arrivals, more patience' },
+    { id: 'workerSpeed', name: 'Crew Speed', max: 6, base: 80, growth: 1.66, blurb: 'Workers move faster' },
+    { id: 'workerCarry', name: 'Crew Capacity', max: 4, base: 100, growth: 1.8, blurb: 'Workers carry +1' }
+  ],
+  // Floor pads. `requires` are flags. Costs climb so the loop teaches itself.
+  unlocks: [
+    { id: 'boot', name: 'Work Boots', blurb: 'Move faster', cost: 12, requires: [], type: 'stat', stat: 'speed', amount: 1, x: 0, z: 2.55 },
+    { id: 'carry', name: 'Carry Vest', blurb: '+2 carry slots', cost: 30, requires: ['boot'], type: 'stat', stat: 'carry', amount: 2, x: -2.4, z: 2.55 },
+    { id: 'saw', name: 'Manual Saw', blurb: 'Cut stock so cycles run faster', cost: 45, requires: ['boot'], type: 'station', station: 'saw', x: -3.45, z: -4.65 },
+    { id: 'lathe', name: 'CNC Lathe', blurb: 'Shafts, flanges, and gear finishing', cost: 90, requires: ['carry'], type: 'machine', machine: 'lathe', x: 5.15, z: -4.7 },
+    { id: 'operator', name: 'Hire Operator', blurb: 'Loads raw stock into machines', cost: 150, requires: ['lathe'], type: 'hire', role: 'operator', x: 2.4, z: 2.55 },
+    { id: 'workshop', name: 'Workshop Wing', blurb: 'Open the west wing', cost: 260, requires: ['operator'], type: 'zone', zone: 'workshop', x: -6.7, z: 2.35, pan: [-15, 1] },
+    { id: 'deburr', name: 'Deburr Station', blurb: 'Finished parts sell for more', cost: 400, requires: ['workshop'], type: 'station', station: 'deburr', x: -15.2, z: -4.7 },
+    { id: 'hauler', name: 'Hire Hauler', blurb: 'Carries finished parts', cost: 380, requires: ['workshop'], type: 'hire', role: 'hauler', x: -17.6, z: 0.4 },
+    { id: 'gear', name: 'Gear Program', blurb: 'Mill a blank, finish it on the lathe', cost: 650, requires: ['deburr'], type: 'flag', x: -12.4, z: 3.5 },
+    { id: 'inspection', name: 'Inspection', blurb: 'Quality check adds a tip', cost: 720, requires: ['deburr'], type: 'station', station: 'inspection', x: -15.2, z: -1.15 },
+    { id: 'cashier', name: 'Hire Cashier', blurb: 'Serves the counter and grabs cash', cost: 900, requires: ['hauler'], type: 'hire', role: 'cashier', x: -17.6, z: 3.5 },
+    { id: 'housing', name: 'Housing Fixture', blurb: 'Mill can cut engine housings', cost: 1200, requires: ['gear'], type: 'flag', x: -15.2, z: 5.15 },
+    { id: 'factory', name: 'Factory Floor', blurb: 'Open the north bay', cost: 1800, requires: ['housing'], type: 'zone', zone: 'factory', x: 0, z: -2.05, pan: [0, -13] },
+    { id: 'packing', name: 'Packing Station', blurb: 'Box parts into crates', cost: 2200, requires: ['factory'], type: 'station', station: 'packing', x: 0.2, z: -9.7 },
+    { id: 'mill2', name: 'Second Mill', blurb: 'Another spindle on the floor', cost: 2600, requires: ['factory'], type: 'machine', machine: 'mill', x: 4.35, z: -13.35 },
+    { id: 'fiveaxis', name: '5-Axis Cell', blurb: 'Slow, high-value impellers', cost: 3000, requires: ['factory'], type: 'machine', machine: 'fiveaxis', x: -5.25, z: -13.4 },
+    { id: 'industrial', name: 'Industrial Plant', blurb: 'Open the east plant', cost: 4500, requires: ['fiveaxis'], type: 'zone', zone: 'industrial', x: 6.35, z: 1.35, pan: [16, 2] },
+    { id: 'dock', name: 'Loading Dock', blurb: 'Corporate trucks buy crates', cost: 5200, requires: ['industrial', 'packing'], type: 'dock', x: 13.2, z: 3.3 },
+    { id: 'forklift', name: 'AGV Forklift', blurb: 'Hauls crates onto the truck', cost: 6000, requires: ['dock'], type: 'hire', role: 'forklift', x: 12.2, z: 5.4 },
+    { id: 'office', name: 'Front Office', blurb: 'Passive income from the shop', cost: 8000, requires: ['industrial'], type: 'office', x: 14.4, z: -2.15 }
+  ],
+  zones: {
+    garage:     { x0: -9, x1: 9,  z0: -7, z1: 9,  vx0: -9, vx1: 9,  vz0: -7, vz1: 9 },
+    workshop:   { x0: -21, x1: -6.15, z0: -7, z1: 9, vx0: -21, vx1: -9, vz0: -7, vz1: 9, flag: 'workshop' },
+    factory:    { x0: -9, x1: 9, z0: -19, z1: -4.55, vx0: -9, vx1: 9, vz0: -19, vz1: -7, flag: 'factory' },
+    industrial: { x0: 6.15, x1: 23, z0: -8, z1: 9, vx0: 9, vx1: 23, vz0: -8, vz1: 9, flag: 'industrial' }
+  },
+  levels: [0, 40, 120, 280, 650, 1400, 2800, 5500, 10000, 18000, 32000, 52000]
+};
+
+const UP = new THREE.Vector3(0, 1, 0);
+const $ = (id) => document.getElementById(id);
+
+// ---------------------------------------------------------------------------
+// Shared PBR materials. Textures are generated once and never disposed.
+// ---------------------------------------------------------------------------
+const MATS = new Map();
+const SURFACE = { ready: false };
+function texRand(seed) {
+  let a = seed >>> 0;
+  return function () {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function makeCanvasTex(size, draw, linear) {
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  draw(canvas.getContext('2d'), size);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = linear ? THREE.LinearSRGBColorSpace : THREE.SRGBColorSpace;
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.anisotropy = 8;
+  tex.userData.shared = true;
+  return tex;
+}
+function paintNoise(ctx, size, rand, contrast) {
+  const img = ctx.createImageData(size, size);
+  const d = img.data;
+  for (let i = 0; i < size * size; i++) {
+    const n = 188 + (rand() - 0.5) * contrast;
+    const v = Math.max(0, Math.min(255, n));
+    d[i * 4] = d[i * 4 + 1] = d[i * 4 + 2] = v;
+    d[i * 4 + 3] = 255;
+  }
+  ctx.putImageData(img, 0, 0);
+}
+function heightToNormal(heightCanvas, strength) {
+  const size = heightCanvas.width;
+  const src = heightCanvas.getContext('2d').getImageData(0, 0, size, size).data;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  const img = ctx.createImageData(size, size);
+  const at = (x, y) => src[(((y + size) % size) * size + ((x + size) % size)) * 4];
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const dx = (at(x - 1, y) - at(x + 1, y)) / 255 * strength;
+      const dy = (at(x, y - 1) - at(x, y + 1)) / 255 * strength;
+      const i = (y * size + x) * 4;
+      img.data[i] = (dx * 0.5 + 0.5) * 255;
+      img.data[i + 1] = (dy * 0.5 + 0.5) * 255;
+      img.data[i + 2] = 255;
+      img.data[i + 3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.LinearSRGBColorSpace;
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.anisotropy = 8;
+  tex.userData.shared = true;
+  return tex;
+}
+function buildSurfaces() {
+  if (SURFACE.ready) return;
+  const size = 256;
+  const rand = texRand(0xc0ffee);
+  SURFACE.paint = makeCanvasTex(size, (ctx) => paintNoise(ctx, size, rand, 28));
+  SURFACE.paintR = makeCanvasTex(size, (ctx) => paintNoise(ctx, size, rand, 40), true);
+  const concrete = document.createElement('canvas');
+  concrete.width = size;
+  concrete.height = size;
+  const cctx = concrete.getContext('2d');
+  cctx.fillStyle = '#c8ccc8';
+  cctx.fillRect(0, 0, size, size);
+  const grit = cctx.getImageData(0, 0, size, size);
+  for (let i = 0; i < size * size; i++) {
+    const n = (rand() - 0.5) * 56;
+    grit.data[i * 4] = Math.max(0, Math.min(255, grit.data[i * 4] + n));
+    grit.data[i * 4 + 1] = Math.max(0, Math.min(255, grit.data[i * 4 + 1] + n));
+    grit.data[i * 4 + 2] = Math.max(0, Math.min(255, grit.data[i * 4 + 2] + n));
+  }
+  cctx.putImageData(grit, 0, 0);
+  for (let i = 0; i < 40; i++) {
+    cctx.fillStyle = rand() > 0.5 ? 'rgba(90,92,88,0.35)' : 'rgba(210,206,196,0.28)';
+    cctx.beginPath();
+    cctx.ellipse(rand() * size, rand() * size, 8 + rand() * 28, 4 + rand() * 14, rand() * 3, 0, Math.PI * 2);
+    cctx.fill();
+  }
+  cctx.fillStyle = 'rgba(40,36,30,0.45)';
+  cctx.beginPath();
+  cctx.ellipse(size * 0.62, size * 0.4, 36, 18, 0.4, 0, Math.PI * 2);
+  cctx.fill();
+  cctx.strokeStyle = '#5a5e62';
+  cctx.lineWidth = 6;
+  cctx.strokeRect(3, 3, size - 6, size - 6);
+  cctx.strokeStyle = 'rgba(30,32,34,0.55)';
+  cctx.lineWidth = 2;
+  for (let i = 0; i < 9; i++) {
+    cctx.beginPath();
+    const x0 = rand() * size;
+    const y0 = rand() * size;
+    cctx.moveTo(x0, y0);
+    cctx.lineTo(x0 + (rand() - 0.5) * 80, y0 + (rand() - 0.5) * 80);
+    cctx.stroke();
+  }
+  SURFACE.concrete = new THREE.CanvasTexture(concrete);
+  SURFACE.concrete.colorSpace = THREE.SRGBColorSpace;
+  SURFACE.concrete.wrapS = SURFACE.concrete.wrapT = THREE.RepeatWrapping;
+  SURFACE.concrete.anisotropy = 8;
+  SURFACE.concrete.userData.shared = true;
+  SURFACE.concreteN = heightToNormal(concrete, 2.4);
+  const steel = document.createElement('canvas');
+  steel.width = size;
+  steel.height = size;
+  const sctx = steel.getContext('2d');
+  const sg = sctx.createLinearGradient(0, 0, size, 0);
+  sg.addColorStop(0, '#8d949b');
+  sg.addColorStop(0.5, '#d5dbe1');
+  sg.addColorStop(1, '#8d949b');
+  sctx.fillStyle = sg;
+  sctx.fillRect(0, 0, size, size);
+  sctx.globalAlpha = 0.35;
+  for (let y = 0; y < size; y += 2) {
+    sctx.fillStyle = rand() > 0.5 ? '#ffffff' : '#5c656e';
+    sctx.fillRect(0, y, size, 1);
+  }
+  sctx.globalAlpha = 1;
+  SURFACE.steel = new THREE.CanvasTexture(steel);
+  SURFACE.steel.colorSpace = THREE.SRGBColorSpace;
+  SURFACE.steel.wrapS = SURFACE.steel.wrapT = THREE.RepeatWrapping;
+  SURFACE.steel.anisotropy = 8;
+  SURFACE.steel.userData.shared = true;
+  SURFACE.brushN = heightToNormal(steel, 1.2);
+  const wood = document.createElement('canvas');
+  wood.width = size;
+  wood.height = size;
+  const wctx = wood.getContext('2d');
+  wctx.fillStyle = '#8a5a32';
+  wctx.fillRect(0, 0, size, size);
+  for (let y = 0; y < size; y += 6) {
+    wctx.fillStyle = rand() > 0.5 ? 'rgba(60,30,12,0.25)' : 'rgba(255,220,170,0.12)';
+    wctx.fillRect(0, y, size, 3);
+  }
+  SURFACE.wood = new THREE.CanvasTexture(wood);
+  SURFACE.wood.colorSpace = THREE.SRGBColorSpace;
+  SURFACE.wood.wrapS = SURFACE.wood.wrapT = THREE.RepeatWrapping;
+  SURFACE.wood.anisotropy = 8;
+  SURFACE.wood.userData.shared = true;
+  const grass = document.createElement('canvas');
+  grass.width = size;
+  grass.height = size;
+  const gctx = grass.getContext('2d');
+  gctx.fillStyle = '#4e6a38';
+  gctx.fillRect(0, 0, size, size);
+  for (let i = 0; i < 26; i++) {
+    gctx.fillStyle = rand() > 0.5 ? '#3a5228' : '#6d8a48';
+    gctx.beginPath();
+    gctx.ellipse(rand() * size, rand() * size, 18 + rand() * 40, 12 + rand() * 24, rand(), 0, Math.PI * 2);
+    gctx.fill();
+  }
+  for (let i = 0; i < 900; i++) {
+    gctx.strokeStyle = rand() > 0.45 ? '#2d471c' : '#9bb56a';
+    gctx.lineWidth = 1 + rand() * 1.5;
+    const x = rand() * size;
+    const y = rand() * size;
+    gctx.beginPath();
+    gctx.moveTo(x, y);
+    gctx.lineTo(x + (rand() - 0.5) * 4, y - 6 - rand() * 10);
+    gctx.stroke();
+  }
+  SURFACE.grass = new THREE.CanvasTexture(grass);
+  SURFACE.grass.colorSpace = THREE.SRGBColorSpace;
+  SURFACE.grass.wrapS = SURFACE.grass.wrapT = THREE.RepeatWrapping;
+  SURFACE.grass.anisotropy = 8;
+  SURFACE.grass.userData.shared = true;
+  SURFACE.grassN = heightToNormal(grass, 1.6);
+  const fabric = document.createElement('canvas');
+  fabric.width = 128;
+  fabric.height = 128;
+  const fctx = fabric.getContext('2d');
+  paintNoise(fctx, 128, rand, 22);
+  SURFACE.fabric = new THREE.CanvasTexture(fabric);
+  SURFACE.fabric.colorSpace = THREE.SRGBColorSpace;
+  SURFACE.fabric.wrapS = SURFACE.fabric.wrapT = THREE.RepeatWrapping;
+  SURFACE.fabric.userData.shared = true;
+  SURFACE.softN = heightToNormal(concrete, 0.8);
+  SURFACE.ready = true;
+}
+const TILE = { concrete: 2, grass: 2.4, leaf: 1.1, steel: 0.22, aluminum: 0.18, wood: 0.45, fabric: 0.18, skin: 0.16, paint: 0.7, plastic: 0.45, rubber: 0.3 };
+function scaleUVs(geo, reps) {
+  const uv = geo.attributes.uv;
+  if (!uv) return;
+  for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * reps, uv.getY(i) * reps);
+}
+function mat(color, opts) {
+  const o = opts || {};
+  buildSurfaces();
+  const kind = o.basic ? 'basic' : (o.kind || 'paint');
+  const opacity = o.opacity == null ? 1 : o.opacity;
+  const key = color + '|' + kind + '|' + opacity + '|' + (o.emissive || 0);
+  let m = MATS.get(key);
+  if (m) return m;
+  if (o.basic || kind === 'basic') {
+    m = new THREE.MeshBasicMaterial({ color, transparent: opacity < 1, opacity, depthWrite: opacity >= 1 });
+  } else {
+    const spec = {
+      paint: { rough: 0.46, metal: 0.08, map: SURFACE.paint, roughMap: SURFACE.paintR, normal: SURFACE.softN, env: 0.75 },
+      concrete: { rough: 0.88, metal: 0.02, map: SURFACE.concrete, normal: SURFACE.concreteN, env: 0.32 },
+      steel: { rough: 0.28, metal: 0.94, map: SURFACE.steel, normal: SURFACE.brushN, env: 1.25 },
+      aluminum: { rough: 0.2, metal: 1, map: SURFACE.steel, normal: SURFACE.brushN, env: 1.35 },
+      wood: { rough: 0.74, metal: 0, map: SURFACE.wood, normal: SURFACE.softN, env: 0.22 },
+      fabric: { rough: 0.94, metal: 0, map: SURFACE.fabric, env: 0.12 },
+      skin: { rough: 0.58, metal: 0, env: 0.28 },
+      rubber: { rough: 0.97, metal: 0, env: 0.08 },
+      plastic: { rough: 0.24, metal: 0.05, map: SURFACE.paint, env: 0.85 },
+      grass: { rough: 0.96, metal: 0, map: SURFACE.grass, normal: SURFACE.grassN, env: 0.12 },
+      leaf: { rough: 0.82, metal: 0, map: SURFACE.grass, normal: SURFACE.grassN, env: 0.18 },
+      glass: { rough: 0.05, metal: 0.04, env: 1.7 },
+      decal: { rough: 0.5, metal: 0.02, env: 0.2 }
+    }[kind] || { rough: 0.55, metal: 0.05, map: SURFACE.paint, env: 0.5 };
+    const transparent = kind === 'glass' || opacity < 1;
+    const glassOpacity = kind === 'glass' && o.opacity == null ? 0.32 : opacity;
+    m = new THREE.MeshStandardMaterial({
+      color,
+      map: spec.map || null,
+      roughness: spec.rough,
+      metalness: spec.metal,
+      roughnessMap: spec.roughMap || null,
+      normalMap: spec.normal || null,
+      normalScale: spec.normal ? new THREE.Vector2(kind === 'concrete' ? 1.4 : 0.6, kind === 'concrete' ? 1.4 : 0.6) : new THREE.Vector2(1, 1),
+      envMapIntensity: spec.env,
+      transparent,
+      opacity: glassOpacity,
+      depthWrite: !transparent || glassOpacity >= 0.9,
+      emissive: o.emissive || 0x000000,
+      emissiveIntensity: o.emissive ? 0.8 : 0
+    });
+  }
+  m.userData.shared = true;
+  MATS.set(key, m);
+  return m;
+}
+function finishMesh(mesh, kind, span) {
+  const basic = kind === 'basic';
+  if (!basic) {
+    const tile = TILE[kind] || 0.5;
+    scaleUVs(mesh.geometry, Math.max(0.2, span / tile));
+    mesh.castShadow = kind !== 'decal' && kind !== 'glass';
+    mesh.receiveShadow = true;
+  }
+  return mesh;
+}
+function addBox(parent, w, h, d, x, y, z, color, basicOrKind) {
+  const kind = basicOrKind === true ? 'basic' : (basicOrKind || 'paint');
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(color, kind === 'basic' ? { basic: true } : { kind }));
+  mesh.position.set(x, y, z);
+  finishMesh(mesh, kind, Math.max(w, h, d));
+  parent.add(mesh);
+  return mesh;
+}
+function addCyl(parent, rt, rb, h, x, y, z, color, segs, kind) {
+  const k = kind || 'paint';
+  const mesh = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, segs || 16), mat(color, { kind: k }));
+  mesh.position.set(x, y, z);
+  finishMesh(mesh, k, Math.max(rt * 2, h));
+  parent.add(mesh);
+  return mesh;
+}
+function makeEnvMap(renderer) {
+  const env = new THREE.Scene();
+  const sky = document.createElement('canvas');
+  sky.width = 16;
+  sky.height = 128;
+  const ctx = sky.getContext('2d');
+  const g = ctx.createLinearGradient(0, 0, 0, 128);
+  g.addColorStop(0, '#c5d7e8');
+  g.addColorStop(0.45, '#8fb4d4');
+  g.addColorStop(0.72, '#d7c4a4');
+  g.addColorStop(1, '#6d6458');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 16, 128);
+  const tex = new THREE.CanvasTexture(sky);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.userData.shared = true;
+  env.add(new THREE.Mesh(new THREE.SphereGeometry(12, 24, 16), new THREE.MeshBasicMaterial({ map: tex, side: THREE.BackSide })));
+  const sunDisc = new THREE.Mesh(new THREE.SphereGeometry(1.4, 12, 8), new THREE.MeshBasicMaterial({ color: 0xfff3d2 }));
+  sunDisc.position.set(6, 7, 3);
+  env.add(sunDisc);
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  const out = pmrem.fromScene(env, 0.04).texture;
+  pmrem.dispose();
+  return out;
+}
+function disposeTree(root) {
+  root.traverse((o) => {
+    if (o.geometry && !o.geometry.userData.shared) o.geometry.dispose();
+    const mats = [].concat(o.material || []);
+    mats.forEach((m) => {
+      if (!m || m.userData.shared) return;
+      if (m.map && !m.map.userData.shared) m.map.dispose();
+      m.dispose();
+    });
+  });
+}
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+function makeLabel(text, opt) {
+  const o = opt || {};
+  const w = o.w || 256;
+  const h = o.h || 128;
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  function draw(t) {
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = o.bg || 'rgba(255,255,255,0.94)';
+    roundRect(ctx, 6, 6, w - 12, h - 12, 28);
+    ctx.fill();
+    ctx.fillStyle = o.fg || '#1b2430';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const lines = String(t).split('\n');
+    const size = lines.length > 2 ? 36 : 44;
+    ctx.font = '800 ' + size + 'px sans-serif';
+    lines.forEach((line, i) => {
+      ctx.fillText(line, w / 2, h / 2 + (i - (lines.length - 1) / 2) * (size + 6), w - 28);
+    });
+  }
+  draw(text);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.userData.dynamic = true;
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true }));
+  sprite.scale.set(o.sx || 1.7, o.sy || 0.85, 1);
+  sprite.userData.setText = (t) => { draw(t); tex.needsUpdate = true; };
+  return sprite;
+}
+function faceYaw(dx, dz) {
+  const len = Math.hypot(dx, dz);
+  if (len < 1e-5) return null;
+  // Local forward is -z. rotation.y = atan2(-dir.x, -dir.z) turns -z onto dir.
+  return Math.atan2(-dx / len, -dz / len);
+}
+function damp(a, b, lambda, dt) {
+  return a + (b - a) * (1 - Math.exp(-lambda * dt));
+}
+function money(n) {
+  return '$' + Math.floor(n).toLocaleString('en-US');
+}
+const Save = {
+  key: 'cnc-ready-v1',
+  read() {
+    if (TESTING) return null;
+    try {
+      const data = JSON.parse(localStorage.getItem(this.key) || 'null');
+      if (!data || data.v !== 1 || typeof data.cash !== 'number') return null;
+      return data;
+    } catch (err) {
+      return null;
+    }
+  },
+  write(game) {
+    if (TESTING || !game) return;
+    try { localStorage.setItem(this.key, JSON.stringify(game.exportState())); } catch (err) { /* private mode */ }
+  },
+  clear() {
+    try { localStorage.removeItem(this.key); } catch (err) { /* private mode */ }
+  }
+};
+
+// ---------------------------------------------------------------------------
+// Input. Joystick up is +forward, which is the camera's flattened look direction.
+// ---------------------------------------------------------------------------
+const Input = {
+  keys: {},
+  joyX: 0,
+  joyY: 0,
+  force: null,
+  pointer: null,
+  soundWanted: true
+};
+const TOUCH = matchMedia('(pointer: coarse)').matches;
+function bindInput() {
+  window.addEventListener('keydown', (e) => {
+    Input.keys[e.code] = true;
+    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) e.preventDefault();
+    if (e.code === 'KeyU') $('btn-up').click();
+    if (e.code === 'Escape') $('btn-close').click();
+  });
+  window.addEventListener('keyup', (e) => { Input.keys[e.code] = false; });
+  const joy = $('joy');
+  const knob = $('knob');
+  const joyState = { id: null, cx: 0, cy: 0 };
+  function setKnob(dx, dy) {
+    const max = 46;
+    const len = Math.hypot(dx, dy) || 1;
+    const k = Math.min(1, max / len);
+    knob.style.transform = 'translate(' + (dx * k) + 'px,' + (dy * k) + 'px)';
+    Input.joyX = (dx * k) / max;
+    Input.joyY = -(dy * k) / max;
+  }
+  joy.addEventListener('pointerdown', (e) => {
+    joyState.id = e.pointerId;
+    joyState.cx = e.clientX;
+    joyState.cy = e.clientY;
+    joy.setPointerCapture(e.pointerId);
+    setKnob(0, 0);
+  });
+  joy.addEventListener('pointermove', (e) => {
+    if (e.pointerId !== joyState.id) return;
+    setKnob(e.clientX - joyState.cx, e.clientY - joyState.cy);
+  });
+  function endJoy(e) {
+    if (e.pointerId !== joyState.id) return;
+    joyState.id = null;
+    Input.joyX = 0;
+    Input.joyY = 0;
+    knob.style.transform = 'translate(0px,0px)';
+  }
+  joy.addEventListener('pointerup', endJoy);
+  joy.addEventListener('pointercancel', endJoy);
+  window.addEventListener('contextmenu', (e) => e.preventDefault());
+}
+function readMove() {
+  if (Input.force) return { x: Input.force.x, y: Input.force.y };
+  let x = Input.joyX;
+  let y = Input.joyY;
+  if (Input.keys.KeyD || Input.keys.ArrowRight) x += 1;
+  if (Input.keys.KeyA || Input.keys.ArrowLeft) x -= 1;
+  if (Input.keys.KeyW || Input.keys.ArrowUp) y += 1;
+  if (Input.keys.KeyS || Input.keys.ArrowDown) y -= 1;
+  const len = Math.hypot(x, y);
+  if (len > 1) { x /= len; y /= len; }
+  return { x, y };
+}
+
+// ---------------------------------------------------------------------------
+// Tiny synthesized SFX. No external audio files. Starts after a gesture.
+// ---------------------------------------------------------------------------
+const Sfx = {
+  ctx: null,
+  ensure() {
+    if (!this.ctx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      this.ctx = new AC();
+    }
+    if (this.ctx.state === 'suspended') this.ctx.resume();
+    return this.ctx;
+  },
+  tone(freq, dur, type, gain) {
+    if (!Input.soundWanted) return;
+    const ctx = this.ensure();
+    if (!ctx) return;
+    const t = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.type = type || 'sine';
+    osc.frequency.setValueAtTime(freq, t);
+    g.gain.setValueAtTime(gain || 0.05, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    osc.connect(g);
+    g.connect(ctx.destination);
+    osc.start(t);
+    osc.stop(t + dur + 0.02);
+  },
+  pickup() { this.tone(720, 0.07, 'triangle', 0.04); },
+  drop() { this.tone(420, 0.06, 'sine', 0.04); },
+  cash() { this.tone(880, 0.08, 'square', 0.03); this.tone(1320, 0.12, 'square', 0.02); },
+  unlock() { [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => this.tone(f, 0.12, 'triangle', 0.05), i * 70)); },
+  bad() { this.tone(180, 0.18, 'sawtooth', 0.03); }
+};
+
+// ---------------------------------------------------------------------------
+// Item meshes. Front of every carried stack is cosmetic; items have no heading.
+// ---------------------------------------------------------------------------
+function buildItemMesh(kind, partId) {
+  const g = new THREE.Group();
+  if (kind === 'stock') addBox(g, 0.16, 0.16, 0.44, 0, 0.1, 0, 0xd5dde3, 'aluminum');
+  else if (kind === 'cut') addBox(g, 0.2, 0.12, 0.22, 0, 0.08, 0, 0x9aa3ab, 'steel');
+  else if (kind === 'blank') addCyl(g, 0.12, 0.12, 0.08, 0, 0.06, 0, 0xc6a15a, 16, 'steel');
+  else if (kind === 'crate') {
+    addBox(g, 0.34, 0.26, 0.34, 0, 0.16, 0, 0x8d5a32, 'wood');
+    addBox(g, 0.36, 0.04, 0.08, 0, 0.3, 0, 0xc4a574, 'wood');
+  } else if (partId === 'bracket') {
+    addBox(g, 0.3, 0.06, 0.12, 0, 0.05, 0, 0xd5dde3, 'aluminum');
+    addBox(g, 0.08, 0.16, 0.12, -0.11, 0.12, 0, 0xd5dde3, 'aluminum');
+  } else if (partId === 'shaft') {
+    const c = addCyl(g, 0.045, 0.045, 0.38, 0, 0.08, 0, 0xb7c0c7, 16, 'steel');
+    c.rotation.z = Math.PI / 2;
+  } else if (partId === 'flange') {
+    addCyl(g, 0.14, 0.14, 0.06, 0, 0.05, 0, 0xc4a574, 20, 'steel');
+    addCyl(g, 0.045, 0.045, 0.09, 0, 0.08, 0, 0x8d6a45, 12, 'steel');
+  } else if (partId === 'gear') {
+    addCyl(g, 0.11, 0.11, 0.05, 0, 0.06, 0, 0xd7a441, 20, 'steel');
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      addBox(g, 0.05, 0.05, 0.045, Math.cos(a) * 0.145, 0.06, Math.sin(a) * 0.145, 0xd7a441, 'steel');
+    }
+  } else if (partId === 'housing') {
+    addBox(g, 0.26, 0.16, 0.2, 0, 0.1, 0, 0x3d4f66, 'paint');
+    addBox(g, 0.1, 0.08, 0.06, 0, 0.14, 0.08, 0x1b263b, 'steel');
+  } else if (partId === 'impeller') {
+    addCyl(g, 0.05, 0.1, 0.08, 0, 0.08, 0, 0x8fe0d2, 16, 'aluminum');
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 5) * Math.PI * 2;
+      const blade = addBox(g, 0.16, 0.015, 0.045, Math.cos(a) * 0.1, 0.1, Math.sin(a) * 0.1, 0x1a9e86, 'aluminum');
+      blade.rotation.y = -a;
+    }
+  } else addBox(g, 0.16, 0.16, 0.16, 0, 0.1, 0, 0xffffff, 'plastic');
+  return g;
+}
+
+function makePerson(shirt, hat) {
+  const visual = new THREE.Group();
+  const legL = new THREE.Group();
+  const legR = new THREE.Group();
+  legL.position.set(-0.1, 0.62, 0);
+  legR.position.set(0.1, 0.62, 0);
+  const legGeoL = addBox(legL, 0.12, 0.4, 0.12, 0, -0.2, 0, 0x243056, 'fabric');
+  const legGeoR = addBox(legR, 0.12, 0.4, 0.12, 0, -0.2, 0, 0x243056, 'fabric');
+  void legGeoL; void legGeoR;
+  addBox(legL, 0.13, 0.07, 0.18, 0, -0.38, -0.03, 0x1a1c1f, 'rubber');
+  addBox(legR, 0.13, 0.07, 0.18, 0, -0.38, -0.03, 0x1a1c1f, 'rubber');
+  const body = addBox(visual, 0.42, 0.46, 0.26, 0, 0.92, 0, shirt, 'fabric');
+  const armL = new THREE.Group();
+  const armR = new THREE.Group();
+  armL.position.set(-0.28, 1.08, 0);
+  armR.position.set(0.28, 1.08, 0);
+  addBox(armL, 0.1, 0.36, 0.1, 0, -0.16, 0, shirt, 'fabric');
+  addBox(armR, 0.1, 0.36, 0.1, 0, -0.16, 0, shirt, 'fabric');
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.145, 18, 14), mat(0xf3c3a1, { kind: 'skin' }));
+  head.position.set(0, 1.32, 0);
+  head.scale.set(1, 1.08, 0.92);
+  head.castShadow = true;
+  visual.add(head);
+  // Nose sits on local -z so the mesh front matches the facing formula.
+  const nose = addBox(visual, 0.055, 0.05, 0.07, 0, 1.3, -0.15, 0xe0a98a, 'skin');
+  addBox(visual, 0.03, 0.028, 0.02, -0.05, 1.35, -0.155, 0x1b2430, 'plastic');
+  addBox(visual, 0.03, 0.028, 0.02, 0.05, 1.35, -0.155, 0x1b2430, 'plastic');
+  addBox(visual, 0.3, 0.08, 0.3, 0, 1.48, 0, hat || 0xf0c014, 'plastic');
+  addBox(visual, 0.18, 0.04, 0.12, 0, 1.44, -0.12, hat || 0xf0c014, 'plastic');
+  addBox(visual, 0.18, 0.22, 0.08, 0, 1.0, 0.14, 0x2b2b2b, 'fabric');
+  visual.add(legL, legR, armL, armR);
+  const blob = new THREE.Mesh(new THREE.CircleGeometry(0.34, 14), mat(0x000000, { basic: true, opacity: 0.16 }));
+  blob.rotation.x = -Math.PI / 2;
+  blob.position.y = 0.025;
+  const root = new THREE.Group();
+  root.add(visual, blob);
+  const carry = new THREE.Group();
+  carry.position.set(0, 1.62, 0);
+  visual.add(carry);
+  return { root, visual, body, legL, legR, armL, armR, head, nose, carry, phase: 0, bodyBase: 0.92 };
+}
+function animatePerson(p, speed, dt, carrying) {
+  p.phase += dt * (4 + speed * 2.2);
+  const swing = Math.sin(p.phase) * Math.min(0.65, speed * 0.11);
+  p.legL.rotation.x = swing;
+  p.legR.rotation.x = -swing;
+  if (carrying) {
+    p.armL.rotation.x = -0.9;
+    p.armR.rotation.x = -0.9;
+  } else {
+    p.armL.rotation.x = -swing * 0.7;
+    p.armR.rotation.x = swing * 0.7;
+  }
+  p.body.position.y = p.bodyBase + Math.abs(Math.sin(p.phase)) * 0.035 * Math.min(1, speed * 0.25);
+}
+
+// ---------------------------------------------------------------------------
+// Economy
+// ---------------------------------------------------------------------------
+class EconomyManager {
+  constructor(game, prestige, lifetime) {
+    this.game = game;
+    this.cash = CONFIG.startCash;
+    this.runEarned = 0;
+    this.lifetime = lifetime || 0;
+    this.prestige = prestige || 1;
+    this.levels = { speed: 0, carry: 0, spindle: 0, output: 0, price: 0, clients: 0, workerSpeed: 0, workerCarry: 0, managers: 0 };
+    this.passiveFrac = 0;
+  }
+  carryCap() { return CONFIG.player.carry + this.levels.carry; }
+  playerSpeed() { return CONFIG.player.speed * (1 + 0.12 * this.levels.speed); }
+  workerSpeed() { return 3.35 * (1 + 0.16 * this.levels.workerSpeed); }
+  workerCap(role) {
+    const base = 2 + this.levels.workerCarry;
+    return role === 'forklift' ? base + 4 : base;
+  }
+  outputCount() { return 1 + this.levels.output; }
+  cycleTime(base, cut) {
+    let t = base / (1 + 0.16 * this.levels.spindle);
+    if (cut) t *= CONFIG.cutSpeed;
+    return Math.max(0.32, t);
+  }
+  priceMult() { return (1 + 0.15 * this.levels.price) * this.prestige; }
+  clientInterval() { return Math.max(3.1, 8 / (1 + 0.14 * this.levels.clients)); }
+  patienceMult() { return 1 + 0.1 * this.levels.clients; }
+  saleValue(item, payMult) {
+    const part = CONFIG.parts[item.partId];
+    if (!part) return 0;
+    const n = item.kind === 'crate' ? 3 * CONFIG.crateBonus : 1;
+    return Math.max(1, Math.round(part.price * n * (item.bonus || 1) * (1 + (item.tip || 0)) * this.priceMult() * (payMult || 1)));
+  }
+  addCash(amount, pos, quiet) {
+    amount = Math.round(amount);
+    if (amount === 0) return;
+    this.cash += amount;
+    if (amount > 0) {
+      this.runEarned += amount;
+      this.lifetime += amount;
+      this.game.onEarned(amount, pos, quiet);
+    }
+  }
+  spend(amount) {
+    amount = Math.round(amount);
+    if (this.cash < amount) return false;
+    this.cash -= amount;
+    return true;
+  }
+  upgradeCost(id) {
+    const u = CONFIG.upgrades.find((x) => x.id === id);
+    const lv = this.levels[id];
+    if (!u || lv >= u.max) return Infinity;
+    return Math.round(u.base * Math.pow(u.growth, lv));
+  }
+  buyUpgrade(id) {
+    const cost = this.upgradeCost(id);
+    if (!this.spend(cost)) return false;
+    this.levels[id] += 1;
+    Sfx.tone(640, 0.08, 'triangle', 0.05);
+    this.game.ui.float(this.game.player.root.position.clone().setY(2), this.upgradeName(id) + ' +1', '#1d6dff');
+    this.game.ui.refreshSheet();
+    return true;
+  }
+  upgradeName(id) {
+    const u = CONFIG.upgrades.find((x) => x.id === id);
+    return u ? u.name : id;
+  }
+  officeRate() {
+    if (!this.game.flags.office) return 0;
+    const machines = this.game.machines.length;
+    return (0.7 + machines * 0.35) * (1 + 0.8 * this.levels.managers) * this.prestige;
+  }
+  managerCost() {
+    const n = this.levels.managers;
+    if (n >= 3) return Infinity;
+    return [2000, 4800, 9000][n];
+  }
+  hireCost(role) {
+    const n = this.game.workers.filter((w) => w.role === role).length;
+    const base = { operator: 220, hauler: 520, cashier: 1100, forklift: 6000 }[role];
+    return Math.round(base * Math.pow(1.85, Math.max(0, n - 1)));
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Player, stations, machines, people
+// ---------------------------------------------------------------------------
+class Player {
+  constructor(game) {
+    this.game = game;
+    this.person = makePerson(0xff7a1a, 0xffd23f);
+    this.root = this.person.root;
+    this.root.position.set(0, 0, 0.35);
+    game.world.add(this.root);
+    this.carry = [];
+    this.carry.res = 0;
+    this.xferCd = 0;
+    this.everPicked = false;
+    this.speed = 0;
+  }
+  get carryAnchor() { return this.person.carry; }
+  update(dt) {
+    const basis = this.game.cameraBasis();
+    const stick = readMove();
+    const pos = this.root.position;
+    let mx = 0;
+    let mz = 0;
+    let capStep = this.game.econ.playerSpeed() * dt;
+    if (Math.hypot(stick.x, stick.y) > 0.01) {
+      if (!Input.force) Input.pointer = null;
+      const move = new THREE.Vector3();
+      move.addScaledVector(basis.fwd, stick.y);
+      move.addScaledVector(basis.right, stick.x);
+      if (move.lengthSq() > 1e-8) {
+        move.normalize();
+        mx = move.x;
+        mz = move.z;
+      }
+    } else if (Input.pointer) {
+      const dx = Input.pointer.x - pos.x;
+      const dz = Input.pointer.z - pos.z;
+      const dist = Math.hypot(dx, dz);
+      if (dist < 0.28) Input.pointer = null;
+      else {
+        mx = dx / dist;
+        mz = dz / dist;
+        capStep = Math.min(capStep, dist);
+      }
+    }
+    this.speed = Math.hypot(stick.x, stick.y) > 0.01 ? Math.min(1, Math.hypot(stick.x, stick.y)) : Math.hypot(mx, mz);
+    if (this.speed > 0.01) {
+      const yaw = faceYaw(mx, mz);
+      if (yaw != null) this.person.visual.rotation.y = yaw;
+      const beforeX = pos.x;
+      const beforeZ = pos.z;
+      this.game.moveBody(pos, mx * capStep, mz * capStep, CONFIG.player.radius);
+      if (Input.pointer) {
+        const left = Math.hypot(Input.pointer.x - pos.x, Input.pointer.z - pos.z);
+        const gained = Math.hypot(pos.x - beforeX, pos.z - beforeZ);
+        if (left < 0.28 || gained < capStep * 0.15) Input.pointer = null;
+      }
+    }
+    if (this.game.marker) {
+      this.game.marker.visible = !!Input.pointer;
+      if (Input.pointer) this.game.marker.position.set(Input.pointer.x, 0.04, Input.pointer.z);
+    }
+    animatePerson(this.person, this.speed * this.game.econ.playerSpeed(), dt, this.carry.length > 0);
+    this.game.layoutStack(this.carryAnchor, this.carry, 'carry', this.speed);
+    this.xferCd -= dt;
+    const pad = this.game.nearestPad(this.root.position.x, this.root.position.z);
+    this.stand = pad;
+    if (pad && pad.drain) pad.drain(dt);
+    else if (pad && this.xferCd <= 0 && pad.use && pad.use(this)) {
+      this.xferCd = CONFIG.transfer;
+    }
+  }
+}
+
+class Machine {
+  constructor(game, type, x, z, id) {
+    this.game = game;
+    this.machineType = type;
+    this.id = id || type;
+    this.x = x;
+    this.z = z;
+    this.hw = type === 'lathe' ? 1.25 : type === 'fiveaxis' ? 1.2 : 1.15;
+    this.hd = 0.86;
+    this.root = new THREE.Group();
+    this.root.position.set(x, 0, z);
+    this.visual = new THREE.Group();
+    this.root.add(this.visual);
+    this.root.userData.machine = this;
+    game.world.add(this.root);
+    this.input = [];
+    this.output = [];
+    this.input.res = 0;
+    this.output.res = 0;
+    this.inCap = 4;
+    this.outCap = 8;
+    this.state = 'idle';
+    this.timer = 0;
+    this.cycle = 1;
+    this.working = null;
+    this.recipe = null;
+    this.manual = null;
+    this.made = 0;
+    this.pop = 1;
+    this.buildVisual();
+    const zPad = this.hd + 0.95;
+    const xOff = Math.min(0.95, this.hw * 0.78);
+    this.inPad = { x: x - xOff, z: z + zPad };
+    this.outPad = { x: x + xOff, z: z + zPad };
+    this.inAnchor = new THREE.Group();
+    this.outAnchor = new THREE.Group();
+    this.inAnchor.position.set(-xOff, 0, zPad);
+    this.outAnchor.position.set(xOff, 0, zPad);
+    this.root.add(this.inAnchor, this.outAnchor);
+    game.addObstacle(x - this.hw, x + this.hw, z - this.hd, z + this.hd, this.id);
+    game.addPad({ x: this.inPad.x, z: this.inPad.z, kind: 'in-' + this.id, use: (p) => this.takeFromPlayer(p) });
+    game.addPad({ x: this.outPad.x, z: this.outPad.z, kind: 'out-' + this.id, use: (p) => this.giveToPlayer(p) });
+    this.label = makeLabel(this.pretty(), { w: 256, h: 96, sx: 1.5, sy: 0.56 });
+    this.label.position.set(0, 2.15, this.hd + 0.2);
+    this.root.add(this.label);
+    this.setLight(0x3ddc78);
+  }
+  pretty() {
+    const mode = this.manual || 'AUTO';
+    const names = { bracket: 'Bracket', shaft: 'Shaft', flange: 'Flange', housing: 'Housing', impeller: 'Impeller', blank: 'Gear blank', auto: 'AUTO' };
+    return this.displayName() + '\n' + (names[mode] || mode);
+  }
+  displayName() {
+    return { mill: 'CNC Mill', lathe: 'CNC Lathe', fiveaxis: '5-Axis' }[this.machineType];
+  }
+  buildVisual() {
+    const v = this.visual;
+    const body = this.machineType === 'fiveaxis' ? 0xc46a12 : 0x3c4d5e;
+    addBox(v, this.hw * 2, 0.22, this.hd * 2, 0, 0.12, 0, 0x9aa3ad, 'steel');
+    addBox(v, this.hw * 2 - 0.08, 0.08, 0.1, 0, 0.28, this.hd - 0.02, 0xe2b007, 'plastic');
+    addBox(v, this.hw * 2 - 0.16, 1.42, this.hd * 2 - 0.12, 0, 1.02, 0, body, 'paint');
+    addBox(v, this.hw * 1.35, 0.04, 0.03, 0, 0.72, this.hd + 0.01, 0x1a1e24, 'decal');
+    addBox(v, this.hw * 1.35, 0.04, 0.03, 0, 1.55, this.hd + 0.01, 0x1a1e24, 'decal');
+    // Window on the +z face (toward the player / counter side of the bay).
+    addBox(v, this.hw * 1.05, 0.52, 0.04, 0, 1.14, this.hd + 0.01, 0x9ec9d6, 'glass');
+    this.door = addBox(v, 0.34, 0.72, 0.06, -this.hw + 0.28, 0.7, this.hd + 0.02, 0x242a32, 'paint');
+    this.doorClosed = this.door.position.x;
+    this.light = new THREE.Mesh(new THREE.SphereGeometry(0.09, 16, 12), new THREE.MeshBasicMaterial({ color: 0x3ddc78 }));
+    this.light.position.set(this.hw - 0.22, 1.82, this.hd + 0.02);
+    v.add(this.light);
+    if (this.machineType === 'lathe') {
+      this.chuck = addCyl(v, 0.22, 0.22, 0.28, -0.15, 0.85, 0.1, 0xc5ccd3, 20, 'steel');
+      this.chuck.rotation.z = Math.PI / 2;
+      addBox(v, 0.9, 0.16, 0.35, 0.25, 0.62, 0.05, 0x3a414a, 'steel');
+    } else {
+      this.head = new THREE.Group();
+      this.head.position.set(0, 1.45, 0.15);
+      addBox(this.head, 0.7, 0.22, 0.42, 0, 0, 0, 0xd5dbe2, 'aluminum');
+      this.spindle = addCyl(this.head, 0.07, 0.05, 0.42, 0, -0.28, 0, 0xe8eef2, 16, 'steel');
+      v.add(this.head);
+      this.headBase = 1.45;
+    }
+    if (this.machineType === 'fiveaxis') {
+      addBox(v, 0.28, 0.7, 0.28, 0.35, 1.55, -0.1, 0xe0b15a, 'paint');
+    }
+    this.barBg = addBox(v, 1.2, 0.08, 0.06, 0, 1.95, 0, 0x14181d, 'plastic');
+    this.bar = addBox(v, 1.2, 0.06, 0.07, 0, 1.95, 0.02, 0x3ddc78, 'plastic');
+    this.workAnchor = new THREE.Group();
+    this.workAnchor.position.set(0, 0.9, 0.2);
+    v.add(this.workAnchor);
+  }
+  setLight(hex) { this.light.material.color.setHex(hex); }
+  cycleMode() {
+    const seq = this.modeList();
+    const cur = this.manual || 'auto';
+    const i = seq.indexOf(cur);
+    this.manual = seq[(i + 1) % seq.length];
+    if (this.manual === 'auto') this.manual = null;
+    this.refreshLabel();
+    this.game.ui.float(this.root.position.clone().setY(2.4), this.manual ? this.manual : 'AUTO', '#1b2430');
+  }
+  modeList() {
+    if (this.machineType === 'mill') {
+      const s = ['auto', 'bracket'];
+      if (this.game.flags.housing) s.push('housing');
+      if (this.game.flags.gear) s.push('blank');
+      return s;
+    }
+    if (this.machineType === 'lathe') return ['auto', 'shaft', 'flange'];
+    return ['auto', 'impeller'];
+  }
+  defaultRecipe() {
+    if (this.machineType === 'lathe') return 'shaft';
+    if (this.machineType === 'fiveaxis') return 'impeller';
+    return 'bracket';
+  }
+  autoRecipe() {
+    const order = this.game.orderedPartIds();
+    for (let i = 0; i < order.length; i++) {
+      const id = order[i];
+      if (this.machineType === 'mill') {
+        if (id === 'bracket' && this.game.shortfall('bracket') > 0) return 'bracket';
+        if (id === 'housing' && this.game.flags.housing && this.game.shortfall('housing') > 0) return 'housing';
+        if (id === 'gear' && this.game.flags.gear && this.game.blankShortage() > 0) return 'blank';
+      } else if (this.machineType === 'lathe') {
+        if ((id === 'shaft' || id === 'flange') && this.game.shortfall(id) > 0) return id;
+      } else if (id === 'impeller' && this.game.shortfall('impeller') > 0) return 'impeller';
+    }
+    return null;
+  }
+  chosenStockRecipe() {
+    return this.manual || this.autoRecipe() || this.defaultRecipe();
+  }
+  needsStock() {
+    if (this.input.length + (this.input.res || 0) >= 2) return false;
+    const count = this.game.econ.outputCount();
+    if (this.output.length >= this.outCap - count) return false;
+    const recipe = this.manual || this.autoRecipe();
+    if (!recipe) return false;
+    if (recipe === 'blank') return this.game.blankShortage() > this.input.length;
+    return this.game.shortfall(recipe) > this.input.length + (this.state === 'run' ? 1 : 0);
+  }
+  accepts(item) {
+    if (this.input.length + (this.input.res || 0) >= this.inCap) return false;
+    if (item.kind === 'blank') return this.machineType === 'lathe';
+    if (item.kind === 'stock' || item.kind === 'cut') return true;
+    return false;
+  }
+  takeFromPlayer(player) {
+    const item = player.carry.find((it) => this.accepts(it));
+    if (!item) return false;
+    return this.game.transfer(item, player.carry, this.input, this.inAnchor, this.inCap);
+  }
+  giveToPlayer(player) {
+    if (!this.output.length) return false;
+    if (player.carry.length + (player.carry.res || 0) >= this.game.econ.carryCap()) return false;
+    return this.game.transfer(this.output[0], this.output, player.carry, player.carryAnchor, this.game.econ.carryCap());
+  }
+  recipeFor(item) {
+    if (item.kind === 'blank' && this.machineType === 'lathe') {
+      return { id: 'gear', kind: 'part', partId: 'gear', time: CONFIG.parts.gear.time };
+    }
+    if (item.kind !== 'stock' && item.kind !== 'cut') return null;
+    let id = this.chosenStockRecipe();
+    if (this.machineType === 'fiveaxis') id = 'impeller';
+    if (this.machineType === 'lathe' && id === 'blank') id = 'shaft';
+    if (id === 'blank') return { id: 'blank', kind: 'blank', partId: 'gear', time: CONFIG.parts.gear.time * 0.85 };
+    if (!CONFIG.parts[id]) id = this.defaultRecipe();
+    if (this.machineType === 'mill' && id === 'shaft') id = 'bracket';
+    if (this.machineType === 'lathe' && (id === 'bracket' || id === 'housing' || id === 'impeller')) id = 'shaft';
+    return { id, kind: 'part', partId: id, time: CONFIG.parts[id].time };
+  }
+  tryStart() {
+    if (this.state === 'run') return;
+    if (!this.input.length) { this.state = 'idle'; this.setLight(0x3ddc78); return; }
+    const item = this.input[0];
+    const recipe = this.recipeFor(item);
+    if (!recipe) {
+      this.input.shift();
+      this.output.push(item);
+      this.game.layoutStack(this.outAnchor, this.output, 'pad');
+      return;
+    }
+    const make = this.game.econ.outputCount();
+    if (this.output.length + (this.output.res || 0) + make > this.outCap) {
+      this.state = 'blocked';
+      this.setLight(0xff4d4d);
+      return;
+    }
+    this.input.shift();
+    this.working = item;
+    this.workAnchor.add(item.mesh);
+    item.mesh.position.set(0, 0, 0);
+    this.recipe = recipe;
+    this.make = recipe.kind === 'blank' ? 1 : make;
+    this.cycle = this.game.econ.cycleTime(recipe.time, item.kind === 'cut');
+    this.timer = 0;
+    this.state = 'run';
+    this.setLight(0xff9f1c);
+  }
+  finish() {
+    if (this.working) this.game.retire(this.working);
+    this.working = null;
+    for (let i = 0; i < this.make; i++) {
+      if (this.output.length >= this.outCap) break;
+      const item = this.game.createItem(this.recipe.kind, this.recipe.partId);
+      this.output.push(item);
+      item.mesh.scale.setScalar(0.2);
+      item.squash = 1;
+    }
+    this.game.layoutStack(this.outAnchor, this.output, 'pad');
+    this.made += this.make;
+    this.state = 'idle';
+    this.recipe = null;
+    this.game.fx.burst(this.root.localToWorld(new THREE.Vector3(0, 1.1, this.hd)), 0xffc857, 10);
+    Sfx.tone(520, 0.05, 'square', 0.03);
+  }
+  update(dt) {
+    this.tryStart();
+    if (this.state === 'run') {
+      this.timer += dt;
+      if (this.spindle) this.spindle.rotation.y += dt * (16 + this.game.econ.levels.spindle * 2);
+      if (this.chuck) this.chuck.rotation.x += dt * 10;
+      if (this.head) this.head.position.y = this.headBase - Math.sin(Math.min(1, this.timer / this.cycle) * Math.PI) * 0.16;
+      if (Math.random() < dt * 18) {
+        const p = this.root.localToWorld(new THREE.Vector3((Math.random() - 0.5) * 0.4, 1.0, this.hd));
+        this.game.fx.burst(p, Math.random() < 0.5 ? 0x7fdbff : 0xffe08a, 1);
+      }
+      if (this.timer >= this.cycle) this.finish();
+    } else if (this.chuck) this.chuck.rotation.x += dt * 0.4;
+    const p = this.state === 'run' ? Math.min(1, this.timer / this.cycle) : 0;
+    this.bar.scale.x = Math.max(0.02, p);
+    this.bar.position.x = -0.6 + 0.6 * p;
+    if (this.door) {
+      const target = this.doorClosed + (this.state === 'run' ? 0.42 : 0);
+      this.door.position.x = damp(this.door.position.x, target, 8, dt);
+    }
+    this.visual.position.x = this.state === 'run' ? Math.sin(this.game.time * 55) * 0.012 : 0;
+    if (this.pop < 1) {
+      this.pop = Math.min(1, this.pop + dt / 0.4);
+      const s = this.pop * (1 + Math.sin(this.pop * Math.PI) * 0.08);
+      this.root.scale.setScalar(Math.max(0.05, s));
+    }
+    this.refreshLabel();
+    this.game.layoutStack(this.inAnchor, this.input, 'pad');
+    this.game.layoutStack(this.outAnchor, this.output, 'pad');
+  }
+  refreshLabel() {
+    if (!this.label) return;
+    const next = this.pretty();
+    if (next !== this._lab) { this._lab = next; this.label.userData.setText(next); }
+  }
+}
+
+class Station {
+  constructor(game, cfg) {
+    this.game = game;
+    Object.assign(this, cfg);
+    this.input = [];
+    this.output = [];
+    this.input.res = 0;
+    this.output.res = 0;
+    this.root = new THREE.Group();
+    this.root.position.set(cfg.x, 0, cfg.z);
+    game.world.add(this.root);
+    this.busy = false;
+    this.timer = 0;
+    this.working = [];
+    this.build();
+    if (cfg.solid) game.addObstacle(cfg.x - cfg.hw, cfg.x + cfg.hw, cfg.z - cfg.hd, cfg.z + cfg.hd, cfg.id);
+  }
+  build() { /* overridden via kind in create */ }
+  update() {}
+}
+
+function buildRack(game) {
+  const s = new Station(game, { id: 'rack', kind: 'rack', x: -6.7, z: -4.65, hw: 0.72, hd: 0.5, solid: true, inCap: 0, outCap: 99 });
+  addBox(s.root, 1.4, 0.12, 1.0, 0, 0.08, 0, 0x5c4030, 'wood');
+  addBox(s.root, 0.08, 1.55, 0.08, -0.6, 0.85, -0.4, 0x8d97a1, 'steel');
+  addBox(s.root, 0.08, 1.55, 0.08, 0.6, 0.85, -0.4, 0x8d97a1, 'steel');
+  addBox(s.root, 0.08, 1.55, 0.08, -0.6, 0.85, 0.4, 0x8d97a1, 'steel');
+  addBox(s.root, 0.08, 1.55, 0.08, 0.6, 0.85, 0.4, 0x8d97a1, 'steel');
+  for (let i = 0; i < 3; i++) addBox(s.root, 1.28, 0.045, 0.9, 0, 0.45 + i * 0.4, 0, 0xa67c52, 'wood');
+  for (let i = 0; i < 4; i++) addBox(s.root, 0.1, 0.1, 0.42, -0.4 + i * 0.26, 0.95, 0, 0xd5dde3, 'aluminum');
+  const label = makeLabel('Raw stock\nwalk in to grab', { w: 256, h: 128, sx: 1.5, sy: 0.75 });
+  label.position.set(0, 2.0, 0.4);
+  s.root.add(label);
+  s.pad = { x: s.x, z: s.z + s.hd + 0.95 };
+  const anchor = new THREE.Group();
+  anchor.position.set(0, 0.2, s.hd + 0.2);
+  s.root.add(anchor);
+  s.outAnchor = anchor;
+  game.addPad({
+    x: s.pad.x, z: s.pad.z, kind: 'rack',
+    use: (player) => {
+      const cap = game.econ.carryCap();
+      if (player.carry.length + (player.carry.res || 0) >= cap) return false;
+      const item = game.createItem('stock');
+      const from = new THREE.Vector3(s.x, 1.1, s.z);
+      game.flyNew(item, from, player.carry, player.carryAnchor, cap);
+      player.everPicked = true;
+      return true;
+    }
+  });
+  return s;
+}
+
+function buildProcessor(game, cfg) {
+  const s = new Station(game, cfg);
+  const color = cfg.color;
+  addBox(s.root, cfg.hw * 2, 0.22, cfg.hd * 2, 0, 0.12, 0, 0x1c2128, 'steel');
+  addBox(s.root, cfg.hw * 2 - 0.1, 0.9, cfg.hd * 2 - 0.1, 0, 0.72, 0, color, 'paint');
+  if (cfg.kind === 'saw') {
+    s.blade = addCyl(s.root, 0.28, 0.28, 0.05, 0, 0.85, 0.1, 0xdfe6ea, 16);
+    s.blade.rotation.z = Math.PI / 2;
+  } else if (cfg.kind === 'deburr') {
+    s.drum = addCyl(s.root, 0.32, 0.32, 0.7, 0, 0.85, 0, 0xced4da, 14);
+    s.drum.rotation.z = Math.PI / 2;
+  } else if (cfg.kind === 'inspection') {
+    s.scan = addBox(s.root, 0.7, 0.06, 0.08, 0, 1.15, 0.2, 0x4cc9f0, true);
+  } else if (cfg.kind === 'packing') {
+    addBox(s.root, 0.4, 0.3, 0.4, 0, 1.15, 0, 0xc68642);
+  }
+  const label = makeLabel(cfg.title, { w: 256, h: 96, sx: 1.45, sy: 0.55 });
+  label.position.set(0, 1.7, cfg.hd);
+  s.root.add(label);
+  s.pad = { x: cfg.x, z: cfg.z + cfg.hd + 0.95 };
+  s.inAnchor = new THREE.Group();
+  s.outAnchor = new THREE.Group();
+  s.inAnchor.position.set(-0.28, 0, cfg.hd + 0.15);
+  s.outAnchor.position.set(0.28, 0, cfg.hd + 0.55);
+  s.root.add(s.inAnchor, s.outAnchor);
+  s.inCap = cfg.inCap || 6;
+  s.outCap = cfg.outCap || 6;
+  game.addPad({
+    x: s.pad.x, z: s.pad.z, kind: cfg.kind,
+    use: (player) => interactProcessor(game, s, player)
+  });
+  s.tick = (dt) => tickProcessor(game, s, dt);
+  return s;
+}
+function interactProcessor(game, s, player) {
+  if (s.output.length && player.carry.length + (player.carry.res || 0) < game.econ.carryCap()) {
+    return game.transfer(s.output[0], s.output, player.carry, player.carryAnchor, game.econ.carryCap());
+  }
+  const item = player.carry.find((it) => processorAccepts(s, it));
+  if (!item) return false;
+  if (s.input.length + (s.input.res || 0) >= s.inCap) return false;
+  return game.transfer(item, player.carry, s.input, s.inAnchor, s.inCap);
+}
+function processorAccepts(s, item) {
+  if (s.kind === 'saw') return item.kind === 'stock';
+  if (s.kind === 'deburr') return item.kind === 'part' && !item.deburred;
+  if (s.kind === 'inspection') return item.kind === 'part' && !item.inspected;
+  if (s.kind === 'packing') return item.kind === 'part';
+  return false;
+}
+function tickProcessor(game, s, dt) {
+  if (s.blade) s.blade.rotation.x += dt * (s.busy ? 14 : 1);
+  if (s.drum) s.drum.rotation.x += dt * (s.busy ? 6 : 0.2);
+  if (s.scan) s.scan.position.x = Math.sin(game.time * 3) * 0.28;
+  if (s.busy) {
+    s.timer += dt;
+    if (s.timer >= s.cycle) {
+      if (s.kind === 'saw') {
+        game.retire(s.working[0]);
+        s.output.push(game.createItem('cut'));
+      } else if (s.kind === 'deburr') {
+        const it = s.working[0];
+        it.deburred = true;
+        it.bonus = Math.max(it.bonus || 1, CONFIG.deburrMult);
+        s.output.push(it);
+      } else if (s.kind === 'inspection') {
+        const it = s.working[0];
+        it.inspected = true;
+        it.tip = Math.max(it.tip || 0, CONFIG.inspectTip);
+        s.output.push(it);
+      } else if (s.kind === 'packing') {
+        const partId = s.working[0].partId;
+        s.working.forEach((it) => game.retire(it));
+        const crate = game.createItem('crate', partId);
+        s.output.push(crate);
+      }
+      s.working = [];
+      s.busy = false;
+      game.layoutStack(s.outAnchor, s.output, 'pad');
+    }
+  } else if (s.kind === 'packing') {
+    const counts = {};
+    s.input.forEach((it) => { if (it.kind === 'part') counts[it.partId] = (counts[it.partId] || 0) + 1; });
+    let pick = null;
+    Object.keys(counts).forEach((id) => { if (counts[id] >= 3 && !pick) pick = id; });
+    if (pick && s.output.length + (s.output.res || 0) < s.outCap) {
+      const grabbed = [];
+      for (let i = s.input.length - 1; i >= 0 && grabbed.length < 3; i--) {
+        if (s.input[i].partId === pick && s.input[i].kind === 'part') grabbed.push(s.input.splice(i, 1)[0]);
+      }
+      s.working = grabbed;
+      s.busy = true;
+      s.timer = 0;
+      s.cycle = 0.85;
+    }
+  } else if (s.input.length && s.output.length + (s.output.res || 0) < s.outCap) {
+    const item = s.input[0];
+    if (!processorAccepts(s, item)) {
+      s.input.shift();
+      s.output.push(item);
+    } else {
+      s.input.shift();
+      s.working = [item];
+      s.busy = true;
+      s.timer = 0;
+      s.cycle = s.kind === 'saw' ? 0.55 : s.kind === 'deburr' ? 0.5 : 0.45;
+    }
+  }
+  // Eject anything that landed in input but can never process (safety).
+  if (!s.busy) {
+    for (let i = s.input.length - 1; i >= 0; i--) {
+      const it = s.input[i];
+      if (!processorAccepts(s, it) && s.output.length < s.outCap) {
+        s.input.splice(i, 1);
+        s.output.push(it);
+      }
+    }
+  }
+  game.layoutStack(s.inAnchor, s.input, 'pad');
+  game.layoutStack(s.outAnchor, s.output, 'pad');
+}
+
+function buildCounter(game) {
+  const x = 3.55;
+  const z = 6.05;
+  const hw = 2.55;
+  const hd = 0.42;
+  const root = new THREE.Group();
+  root.position.set(x, 0, z);
+  game.world.add(root);
+  addBox(root, hw * 2, 0.92, hd * 2, 0, 0.46, 0, 0xd7d2c8, 'paint');
+  addBox(root, hw * 2, 0.08, hd * 2 + 0.06, 0, 0.96, 0, 0xc5ccd3, 'steel');
+  addBox(root, 0.45, 0.28, 0.35, 1.5, 1.2, 0, 0x222831);
+  addBox(root, 0.28, 0.22, 0.04, 1.5, 1.28, 0.18, 0x80ffdb, true);
+  addCyl(root, 0.1, 0.1, 0.08, -1.7, 1.12, 0, 0xffd166, 12);
+  const label = makeLabel('Order counter', { w: 256, h: 80, sx: 1.6, sy: 0.5 });
+  label.position.set(0, 1.7, 0);
+  root.add(label);
+  game.addObstacle(x - hw, x + hw, z - hd, z + hd, 'counter');
+  const serve = { x: x - 1.15, z: z - hd - 1.0 };
+  const cash = { x: x + 1.35, z: z - hd - 1.0 };
+  const shelfAnchor = new THREE.Group();
+  shelfAnchor.position.set(-0.4, 1.05, 0);
+  root.add(shelfAnchor);
+  const counter = {
+    id: 'counter', root, shelf: [], serve, cash, shelfAnchor, stand: { x: x - 1.15, z: z - hd - 1.55 }
+  };
+  counter.shelf.res = 0;
+  game.addPad({
+    x: serve.x, z: serve.z, kind: 'serve',
+    use: (player) => {
+      const item = player.carry.find((it) => it.kind === 'part' || it.kind === 'crate');
+      if (!item) {
+        if (player.carry.length && game.time - (game._hintAt || 0) > 1.4) {
+          game._hintAt = game.time;
+          game.ui.float(player.root.position.clone().setY(2), 'Finish it before serving', '#c0392b');
+        }
+        return false;
+      }
+      if (counter.shelf.length + (counter.shelf.res || 0) >= 18) return false;
+      return game.transfer(item, player.carry, counter.shelf, shelfAnchor, 18);
+    }
+  });
+  game.addPad({
+    x: cash.x, z: cash.z, kind: 'cash',
+    use: () => game.collectNearestCash(cash.x, cash.z, 1.4)
+  });
+  game.counter = counter;
+  return counter;
+}
+
+function buildDock(game) {
+  const root = new THREE.Group();
+  root.position.set(16.2, 0, 3.25);
+  game.world.add(root);
+  addBox(root, 6.2, 0.12, 3.4, 0, 0.06, 0, 0x9aa3ab, 'concrete');
+  addBox(root, 0.2, 0.9, 3.2, -3, 0.5, 0, 0xf5c518);
+  addBox(root, 0.2, 0.9, 3.2, 3, 0.5, 0, 0xf5c518);
+  const label = makeLabel('Loading dock', { w: 256, h: 80, sx: 1.8, sy: 0.55 });
+  label.position.set(0, 1.6, 0);
+  root.add(label);
+  const holdAnchor = new THREE.Group();
+  holdAnchor.position.set(-1.2, 0.2, 0);
+  root.add(holdAnchor);
+  const dock = {
+    id: 'dock', root, holding: [], holdAnchor,
+    pad: { x: 15.3, z: 3.25 },
+    cash: { x: 13.6, z: 4.5 }
+  };
+  dock.holding.res = 0;
+  game.addPad({
+    x: dock.pad.x, z: dock.pad.z, kind: 'dock',
+    use: (player) => loadDock(game, dock, player)
+  });
+  game.addPad({
+    x: dock.cash.x, z: dock.cash.z, kind: 'dock-cash',
+    active: () => game.flags.dock,
+    use: () => game.collectNearestCash(dock.cash.x, dock.cash.z, 1.6)
+  });
+  game.dock = dock;
+  return dock;
+}
+function loadDock(game, dock, player) {
+  const truck = game.truck;
+  if (truck && truck.state === 'wait') {
+    const crate = player.carry.find((it) => it.kind === 'crate' && it.partId === truck.partId);
+    if (!crate) return false;
+    if (truck.loaded.length >= truck.need) return false;
+    const ok = game.transfer(crate, player.carry, truck.loaded, truck.bedAnchor, truck.need);
+    if (ok) crate.committed = true;
+    return ok;
+  }
+  return false;
+}
+
+class Client {
+  constructor(game, order, opts) {
+    this.game = game;
+    this.order = order;
+    this.payMult = opts.payMult;
+    this.patience = opts.patience;
+    this.maxPatience = opts.patience;
+    this.slot = 0;
+    this.leaving = false;
+    this.angry = false;
+    this.held = [];
+    this.speed = 2.35;
+    this.dead = false;
+    const shirt = opts.shirt;
+    this.person = makePerson(shirt, opts.hat);
+    this.root = this.person.root;
+    this.root.position.set(opts.x, 0, opts.z);
+    game.world.add(this.root);
+    this.ui = new THREE.Group();
+    this.root.add(this.ui);
+    this.ui.position.y = 1.85;
+    this.bubble = makeLabel(this.bubbleText(), { w: 320, h: 140, sx: 1.35, sy: 0.6, bg: 'rgba(255,255,255,0.96)' });
+    this.bubble.position.set(0, 0.55, 0);
+    this.ui.add(this.bubble);
+    const bg = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.09, 0.03), mat(0x1b2430, { basic: true }));
+    this.fillMat = new THREE.MeshBasicMaterial({ color: 0x3ddc78 });
+    this.fill = new THREE.Mesh(new THREE.BoxGeometry(0.66, 0.07, 0.04), this.fillMat);
+    bg.position.set(0, 0.22, 0);
+    this.fill.position.set(0, 0.22, 0.01);
+    this.ui.add(bg, this.fill);
+    this._bubble = this.bubbleText();
+  }
+  bubbleText() {
+    const part = CONFIG.parts[this.order.partId];
+    const left = this.order.need - this.held.length;
+    return part.name + '\nx' + left;
+  }
+  update(dt) {
+    const goal = this.leaving ? { x: 7.4, z: 8.35 } : this.game.queueSlot(this.slot);
+    const dx = goal.x - this.root.position.x;
+    const dz = goal.z - this.root.position.z;
+    const dist = Math.hypot(dx, dz);
+    if (dist > 0.12) {
+      const step = Math.min(dist, this.speed * dt);
+      const before = this.root.position.x + this.root.position.z;
+      this.game.moveBody(this.root.position, (dx / dist) * step, (dz / dist) * step, 0.36);
+      const after = this.root.position.x + this.root.position.z;
+      if (Math.abs(after - before) < 0.002) this.stuck = (this.stuck || 0) + dt;
+      else this.stuck = 0;
+      if (this.stuck > 1.6) {
+        this.root.position.x += 0.4;
+        this.stuck = 0;
+      }
+      const yaw = faceYaw(dx, dz);
+      if (yaw != null) this.person.visual.rotation.y = yaw;
+      animatePerson(this.person, this.speed, dt, false);
+      this.inPlace = false;
+    } else {
+      this.inPlace = !this.leaving;
+      this.person.visual.rotation.y = 0;
+      animatePerson(this.person, 0, dt, false);
+      if (this.leaving) this.dead = true;
+      else {
+        this.patience -= dt;
+        if (this.patience <= 0) this.bail();
+      }
+    }
+    const t = Math.max(0, Math.min(1, this.patience / this.maxPatience));
+    this.fill.scale.x = Math.max(0.02, t);
+    this.fill.position.x = -0.33 + 0.33 * t;
+    this.fillMat.color.setHSL(t * 0.33, 0.85, 0.45);
+    const text = this.angry ? 'Too slow!' : this.bubbleText();
+    if (text !== this._bubble) { this._bubble = text; this.bubble.userData.setText(text); }
+    this.ui.quaternion.copy(this.game.camera.quaternion);
+  }
+  bail() {
+    if (this.leaving) return;
+    this.leaving = true;
+    this.angry = true;
+    this.held.forEach((item) => {
+      item.committed = false;
+      if (this.game.counter.shelf.length < 18) this.game.counter.shelf.push(item);
+      else this.game.dropNear(item, this.game.counter.serve.x, this.game.counter.serve.z);
+    });
+    this.held = [];
+    this.game.layoutStack(this.game.counter.shelfAnchor, this.game.counter.shelf, 'shelf');
+    Sfx.bad();
+    this.game.ui.float(this.root.position.clone().setY(2.2), 'Left angry', '#c0392b');
+  }
+  complete() {
+    let total = 0;
+    this.held.forEach((item) => {
+      total += this.game.econ.saleValue(item, this.payMult);
+      this.game.retire(item);
+    });
+    this.held = [];
+    this.game.spawnCash(total, this.game.counter.cash.x, this.game.counter.cash.z);
+    this.game.servedOnce = true;
+    this.leaving = true;
+    Sfx.cash();
+  }
+}
+
+class Worker {
+  constructor(game, role, x, z) {
+    this.game = game;
+    this.role = role;
+    this.carry = [];
+    this.carry.res = 0;
+    this.cd = 0;
+    this.stuck = 0;
+    this.detour = 0;
+    if (role === 'forklift') {
+      this.root = makeForklift();
+      this.visual = this.root;
+      this.carryAnchor = new THREE.Group();
+      this.carryAnchor.position.set(0, 0.62, -0.45);
+      this.root.add(this.carryAnchor);
+      this.person = null;
+    } else {
+      const shirt = { operator: 0x2a9d8f, hauler: 0x457b9d, cashier: 0x9b5de5 }[role];
+      this.person = makePerson(shirt, 0xf8f9fa);
+      this.root = this.person.root;
+      this.carryAnchor = this.person.carry;
+    }
+    this.root.position.set(x, 0, z);
+    game.world.add(this.root);
+    const label = makeLabel({ operator: 'Operator', hauler: 'Hauler', cashier: 'Cashier', forklift: 'AGV' }[role], { w: 256, h: 80, sx: 1.15, sy: 0.4, bg: 'rgba(29,42,58,0.9)', fg: '#ffffff' });
+    label.position.set(0, role === 'forklift' ? 1.55 : 2.05, 0);
+    this.root.add(label);
+  }
+  update(dt) {
+    this.cd -= dt;
+    if (this.detour > 0) this.detour -= dt;
+    const goal = this.think();
+    let moving = 0;
+    if (goal) {
+      const dx = goal.x - this.root.position.x;
+      const dz = goal.z - this.root.position.z;
+      const dist = Math.hypot(dx, dz);
+      if (dist > 0.62) {
+        let mx = dx / dist;
+        let mz = dz / dist;
+        if (this.detour > 0) { const s = mx; mx = -mz; mz = s; }
+        const sp = this.game.econ.workerSpeed() * (this.role === 'forklift' ? 1.25 : 1);
+        const before = this.root.position.clone();
+        this.game.moveBody(this.root.position, mx * sp * dt, mz * sp * dt, this.role === 'forklift' ? 0.55 : 0.38);
+        moving = sp;
+        const yaw = faceYaw(goal.x - this.root.position.x, goal.z - this.root.position.z);
+        if (yaw != null) {
+          if (this.person) this.person.visual.rotation.y = yaw;
+          else this.root.rotation.y = yaw;
+        }
+        if (before.distanceTo(this.root.position) < 0.01) this.stuck += dt;
+        else this.stuck = 0;
+        if (this.stuck > 0.75) { this.detour = 0.4; this.stuck = 0; }
+      } else if (goal.act && this.cd <= 0) {
+        if (goal.act()) this.cd = 0.12;
+        this.stuck = 0;
+      }
+    }
+    if (this.person) animatePerson(this.person, moving, dt, this.carry.length > 0);
+    this.game.layoutStack(this.carryAnchor, this.carry, 'carry', moving);
+  }
+  think() {
+    if (this.role === 'operator') return this.thinkOperator();
+    if (this.role === 'hauler') return this.thinkHauler();
+    if (this.role === 'cashier') return this.thinkCashier();
+    return this.thinkFork();
+  }
+  thinkOperator() {
+    const cap = this.game.econ.workerCap('operator');
+    const saw = this.game.station('saw');
+    if (this.carry.length) {
+      const item = this.carry[0];
+      if (item.kind === 'cut' || item.kind === 'stock') {
+        const m = this.game.hungryMachine();
+        if (m) return { x: m.inPad.x, z: m.inPad.z, act: () => this.dropInto(m) };
+      }
+      if (saw && item.kind === 'stock' && saw.input.length + (saw.input.res || 0) < saw.inCap) {
+        return { x: saw.pad.x, z: saw.pad.z, act: () => this.game.transfer(item, this.carry, saw.input, saw.inAnchor, saw.inCap) };
+      }
+      return { x: -6.7, z: -2.4, act: null };
+    }
+    const hungry = this.game.hungryMachine();
+    if (hungry) {
+      if (saw && saw.output.length) return { x: saw.pad.x, z: saw.pad.z, act: () => this.pickFromOutput(saw) };
+      const rack = this.game.station('rack');
+      return { x: rack.pad.x, z: rack.pad.z, act: () => this.pickStock(cap) };
+    }
+    if (saw && saw.input.length + (saw.input.res || 0) < 2 && saw.output.length < 3) {
+      const rack = this.game.station('rack');
+      return { x: rack.pad.x, z: rack.pad.z, act: () => this.pickStock(1) };
+    }
+    return { x: -6.7, z: -2.4, act: null };
+  }
+  thinkHauler() {
+    if (this.carry.length) {
+      const dest = this.game.destFor(this.carry[0]);
+      if (!dest) return null;
+      return { x: dest.x, z: dest.z, act: () => this.dropAtDest(dest) };
+    }
+    const found = this.game.findHaulItem();
+    if (!found) return { x: 1.2, z: -2.2, act: null };
+    return { x: found.pad.x, z: found.pad.z, act: () => this.pickSpecific(found) };
+  }
+  thinkCashier() {
+    const pile = this.game.nearestLooseCash();
+    if (pile) return { x: pile.x, z: pile.z, act: () => this.game.collectPile(pile) };
+    const c = this.game.counter;
+    return { x: c.stand.x, z: c.stand.z, act: null };
+  }
+  thinkFork() {
+    if (this.carry.length) {
+      const truck = this.game.truck;
+      if (truck && truck.state === 'wait' && this.carry[0].partId === truck.partId) {
+        return { x: this.game.dock.pad.x, z: this.game.dock.pad.z, act: () => loadDock(this.game, this.game.dock, this) };
+      }
+      return null;
+    }
+    const crate = this.game.findCrate(this.game.truck && this.game.truck.state === 'wait' ? this.game.truck.partId : null);
+    if (!crate) return { x: 15, z: 5.2, act: null };
+    return { x: crate.pad.x, z: crate.pad.z, act: () => this.pickSpecific(crate) };
+  }
+  pickStock(maxN) {
+    const cap = this.game.econ.workerCap(this.role);
+    if (this.carry.length + (this.carry.res || 0) >= Math.min(cap, maxN)) return false;
+    const item = this.game.createItem('stock');
+    const rack = this.game.station('rack');
+    this.game.flyNew(item, new THREE.Vector3(rack.x, 1.1, rack.z), this.carry, this.carryAnchor, cap);
+    return true;
+  }
+  pickFromOutput(station) {
+    if (!station.output.length) return false;
+    const cap = this.game.econ.workerCap(this.role);
+    if (this.carry.length + (this.carry.res || 0) >= cap) return false;
+    return this.game.transfer(station.output[0], station.output, this.carry, this.carryAnchor, cap);
+  }
+  pickSpecific(found) {
+    const cap = this.game.econ.workerCap(this.role);
+    if (this.carry.length + (this.carry.res || 0) >= cap) return false;
+    if (found.list.indexOf(found.item) < 0) return false;
+    return this.game.transfer(found.item, found.list, this.carry, this.carryAnchor, cap);
+  }
+  dropInto(machine) {
+    const item = this.carry.find((it) => machine.accepts(it));
+    if (!item) return false;
+    return this.game.transfer(item, this.carry, machine.input, machine.inAnchor, machine.inCap);
+  }
+  dropAtDest(dest) {
+    const item = this.carry[0];
+    if (!item || !dest.take(item)) return false;
+    return true;
+  }
+}
+
+function makeForklift() {
+  const g = new THREE.Group();
+  addBox(g, 0.7, 0.28, 1.05, 0, 0.32, 0.05, 0xf0a202);
+  addBox(g, 0.48, 0.38, 0.42, 0, 0.62, 0.2, 0x343a40);
+  addBox(g, 0.08, 0.7, 0.08, 0.22, 0.7, -0.4, 0x495057);
+  addBox(g, 0.08, 0.7, 0.08, -0.22, 0.7, -0.4, 0x495057);
+  addBox(g, 0.5, 0.05, 0.55, 0, 0.28, -0.7, 0x868e96);
+  [[0.32, 0.35], [-0.32, 0.35], [0.32, -0.3], [-0.32, -0.3]].forEach(([x, z]) => {
+    const w = addCyl(g, 0.14, 0.14, 0.1, x, 0.14, z, 0x212529, 10);
+    w.rotation.z = Math.PI / 2;
+  });
+  return g;
+}
+
+class Truck {
+  constructor(game) {
+    this.game = game;
+    this.partId = game.pickPart(true);
+    this.need = 1 + (Math.random() < 0.5 ? 1 : 0) + (game.econ.levels.clients > 3 && Math.random() < 0.4 ? 1 : 0);
+    this.loaded = [];
+    this.loaded.res = 0;
+    this.patience = 80 * game.econ.patienceMult();
+    this.maxP = this.patience;
+    this.state = 'arrive';
+    this.x = 27;
+    this.parkX = 19.4;
+    this.root = new THREE.Group();
+    game.world.add(this.root);
+    addBox(this.root, 1.5, 1.15, 2.1, 1.15, 0.85, 0, 0xf8f9fa);
+    addBox(this.root, 1.7, 0.9, 2.5, -0.7, 0.85, 0, 0x4cc9f0);
+    addBox(this.root, 0.7, 0.45, 1.2, 1.15, 1.15, 0, 0xdee2e6);
+    [[1.5, 0.75], [1.5, -0.75], [-0.8, 0.75], [-0.8, -0.75], [-1.5, 0.75], [-1.5, -0.75]].forEach(([x, z]) => {
+      const w = addCyl(this.root, 0.28, 0.28, 0.18, x, 0.28, z, 0x212529, 10);
+      w.rotation.x = Math.PI / 2;
+    });
+    this.bedAnchor = new THREE.Group();
+    this.bedAnchor.position.set(-0.7, 1.35, 0);
+    this.root.add(this.bedAnchor);
+    this.bubble = makeLabel(this.text(), { w: 320, h: 140, sx: 1.8, sy: 0.8 });
+    this.bubble.position.set(0, 2.3, 0);
+    this.root.add(this.bubble);
+    this._txt = this.text();
+    this.obstacle = game.addObstacle(0, 0, 0, 0, 'truck');
+  }
+  text() {
+    const left = this.need - this.loaded.length;
+    return 'Truck wants\n' + left + 'x ' + CONFIG.parts[this.partId].name + ' crates';
+  }
+  update(dt) {
+    if (this.state === 'arrive') {
+      this.x -= dt * 7;
+      if (this.x <= this.parkX) {
+        this.x = this.parkX;
+        this.state = 'wait';
+        this.game.ui.milestone('Truck at the dock', CONFIG.parts[this.partId].name + ' crates × ' + this.need);
+      }
+    } else if (this.state === 'wait') {
+      this.patience -= dt;
+      if (this.loaded.length >= this.need && (this.loaded.res || 0) === 0) this.pay();
+      else if (this.patience <= 0) this.depart(true);
+    } else {
+      this.x += dt * 9;
+      if (this.x > 32) this.dead = true;
+    }
+    this.root.position.set(this.x, 0, 3.25);
+    // Cab blocks the player. The bed stays open so crates can be loaded from the west.
+    this.obstacle.minX = this.x + 0.3;
+    this.obstacle.maxX = this.x + 2.1;
+    this.obstacle.minZ = 2.2;
+    this.obstacle.maxZ = 4.3;
+    this.obstacle.active = this.state !== 'gone';
+    const t = this.text();
+    if (t !== this._txt) { this._txt = t; this.bubble.userData.setText(t); }
+    gameLayoutTruck(this);
+  }
+  pay() {
+    let total = 0;
+    this.loaded.forEach((crate) => {
+      total += this.game.econ.saleValue(crate, 1.15);
+      this.game.retire(crate);
+    });
+    this.loaded.length = 0;
+    this.game.spawnCash(total, this.game.dock.cash.x, this.game.dock.cash.z);
+    this.game.ui.milestone('Truck paid', money(total) + ' for the load');
+    this.game.shake = Math.min(0.35, this.game.shake + 0.18);
+    Sfx.unlock();
+    this.depart(false);
+  }
+  depart(angry) {
+    if (angry) {
+      this.loaded.forEach((crate) => {
+        crate.committed = false;
+        this.game.dock.holding.push(crate);
+      });
+      this.loaded.length = 0;
+      this.game.layoutStack(this.game.dock.holdAnchor, this.game.dock.holding, 'pad');
+      this.game.ui.float(this.root.position.clone().setY(2.4), 'Truck left', '#c0392b');
+    }
+    this.state = 'leave';
+  }
+}
+function gameLayoutTruck(truck) {
+  truck.game.layoutStack(truck.bedAnchor, truck.loaded, 'pad');
+}
+
+class FX {
+  constructor(parent) {
+    this.parts = [];
+    for (let i = 0; i < 40; i++) {
+      const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.055, 6, 6), new THREE.MeshBasicMaterial({ color: 0xffe08a }));
+      mesh.visible = false;
+      parent.add(mesh);
+      this.parts.push({ mesh, life: 0, vel: new THREE.Vector3() });
+    }
+  }
+  burst(pos, color, n) {
+    let left = n;
+    for (let i = 0; i < this.parts.length && left > 0; i++) {
+      const p = this.parts[i];
+      if (p.life > 0) continue;
+      p.life = 0.35 + Math.random() * 0.25;
+      p.mesh.visible = true;
+      p.mesh.position.copy(pos);
+      p.mesh.material.color.setHex(color);
+      p.vel.set((Math.random() - 0.5) * 2.2, 1.5 + Math.random() * 2, (Math.random() - 0.5) * 2.2);
+      left--;
+    }
+  }
+  update(dt) {
+    this.parts.forEach((p) => {
+      if (p.life <= 0) return;
+      p.life -= dt;
+      p.vel.y -= dt * 6;
+      p.mesh.position.addScaledVector(p.vel, dt);
+      if (p.life <= 0) p.mesh.visible = false;
+    });
+  }
+}
+
+class UIManager {
+  constructor(game) {
+    this.game = game;
+    this.cashShown = '';
+    this.tip = '';
+    this.milestoneQ = [];
+    this.sheetOpen = false;
+    $('btn-up').onclick = () => this.toggleSheet(true);
+    $('btn-close').onclick = () => this.toggleSheet(false);
+    $('btn-sound').onclick = () => {
+      Input.soundWanted = !Input.soundWanted;
+      $('btn-sound').textContent = Input.soundWanted ? 'Sound on' : 'Sound off';
+      if (Input.soundWanted) Sfx.ensure();
+    };
+    $('btn-start').onclick = () => {
+      $('start-card').hidden = true;
+      Sfx.ensure();
+      const live = window.__game;
+      if (live) {
+        live.paused = false;
+        Save.write(live);
+      }
+    };
+    $('sheet-body').onclick = (e) => {
+      const live = window.__game;
+      if (!live) return;
+      const buy = e.target.dataset.buy;
+      const hire = e.target.dataset.hire;
+      if (buy) live.econ.buyUpgrade(buy);
+      if (hire === 'manager') {
+        const cost = live.econ.managerCost();
+        if (live.econ.spend(cost)) {
+          live.econ.levels.managers += 1;
+          live.ui.milestone('Manager hired', 'Office income is up');
+          live.ui.refreshSheet();
+        }
+      } else if (hire) {
+        const cost = live.econ.hireCost(hire);
+        if (live.workers.filter((w) => w.role === hire).length >= (hire === 'forklift' ? 1 : 3)) return;
+        if (!live.flags[hire]) return;
+        if (live.econ.spend(cost)) {
+          live.spawnWorker(hire);
+          live.ui.refreshSheet();
+        }
+      }
+      if (e.target.dataset.prestige) live.askPrestige();
+      if (e.target.dataset.reset) {
+        live.ui.confirm('Reset this test save?', 'Clears cash, machines, and crew on this device.', () => {
+          Save.clear();
+          location.reload();
+        });
+      }
+    };
+    $('modal-no').onclick = () => { $('modal').classList.remove('show'); this._modalYes = null; };
+    $('modal-yes').onclick = () => {
+      $('modal').classList.remove('show');
+      if (this._modalYes) this._modalYes();
+      this._modalYes = null;
+    };
+    this.floats = [];
+  }
+  toggleSheet(open) {
+    this.sheetOpen = open;
+    $('sheet').hidden = !open;
+    if (open) this.refreshSheet();
+  }
+  refreshSheet() {
+    if (!this.sheetOpen) return;
+    const econ = this.game.econ;
+    let html = '';
+    CONFIG.upgrades.forEach((u) => {
+      const lv = econ.levels[u.id];
+      const cost = econ.upgradeCost(u.id);
+      const maxed = lv >= u.max;
+      html += '<div class="row"><div><b>' + u.name + '  ' + lv + '/' + u.max + '</b><span>' + u.blurb + '</span></div>' +
+        '<button class="buy" data-buy="' + u.id + '"' + (maxed || econ.cash < cost ? ' disabled' : '') + '>' +
+        (maxed ? 'MAX' : money(cost)) + '</button></div>';
+    });
+    ['operator', 'hauler', 'cashier', 'forklift'].forEach((role) => {
+      if (!this.game.flags[role]) return;
+      const n = this.game.workers.filter((w) => w.role === role).length;
+      const max = role === 'forklift' ? 1 : 3;
+      if (n >= max || n < 1) return;
+      const cost = econ.hireCost(role);
+      html += '<div class="row"><div><b>Another ' + role + '</b><span>' + n + '/' + max + ' on the floor</span></div>' +
+        '<button class="buy" data-hire="' + role + '"' + (econ.cash < cost ? ' disabled' : '') + '>' + money(cost) + '</button></div>';
+    });
+    if (this.game.flags.office) {
+      const cost = econ.managerCost();
+      const maxed = econ.levels.managers >= 3;
+      html += '<div class="row"><div><b>Hire manager ' + econ.levels.managers + '/3</b><span>Boosts office income</span></div>' +
+        '<button class="buy" data-hire="manager"' + (maxed || econ.cash < cost ? ' disabled' : '') + '>' +
+        (maxed ? 'MAX' : money(cost)) + '</button></div>';
+    }
+    const gate = econ.lifetime >= CONFIG.prestigeGate || this.game.flags.office;
+    html += '<div class="row"><div><b>Open a new factory</b><span>Reset this shop for +25% permanent pay. Needs ' + money(CONFIG.prestigeGate) + ' lifetime or the office.</span></div>' +
+      '<button class="buy" data-prestige="1"' + (gate ? '' : ' disabled') + '>x' + econ.prestige.toFixed(2) + '</button></div>';
+    html += '<div class="row"><div><b>Reset test save</b><span>Start the shop over on this device</span></div>' +
+      '<button class="buy" data-reset="1" style="background:#c0392b;box-shadow:0 3px 0 #8e2a20">Reset</button></div>';
+    $('sheet-body').innerHTML = html;
+  }
+  update() {
+    const econ = this.game.econ;
+    const cash = money(econ.cash);
+    if (cash !== this.cashShown) {
+      const up = econ.cash > (this._lastCash || 0);
+      this._lastCash = econ.cash;
+      this.cashShown = cash;
+      $('cash-pill').textContent = cash;
+      if (up) {
+        $('cash-pill').classList.remove('pop');
+        void $('cash-pill').offsetWidth;
+        $('cash-pill').classList.add('pop');
+      }
+    }
+    const cap = econ.carryCap();
+    $('meta').innerHTML = 'Lv ' + this.game.level + '<br>Carry ' + this.game.player.carry.length + '/' + cap;
+    $('zone-pill').innerHTML = this.game.zoneName() + '<br>Pay x' + econ.prestige.toFixed(2);
+    const goal = this.game.nextGoal();
+    if (goal !== this._goal) { this._goal = goal; $('goal').textContent = goal; }
+    const order = this.game.frontOrderText();
+    $('order-text').textContent = order.text;
+    $('swatch').style.background = order.color;
+    this._sheetFrame = (this._sheetFrame || 0) + 1;
+    if (this.sheetOpen && this._sheetFrame % 20 === 0) this.refreshSheet();
+    const cam = this.game.camera;
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    this.floats = this.floats.filter((f) => {
+      f.age += 1 / 60;
+      f.pos.y += 0.6 / 60;
+      const p = f.pos.clone().project(cam);
+      f.el.style.left = (p.x * 0.5 + 0.5) * w + 'px';
+      f.el.style.top = (-p.y * 0.5 + 0.5) * h + 'px';
+      f.el.style.opacity = String(Math.max(0, 1 - f.age / 0.9));
+      if (f.age > 0.9) { f.el.remove(); return false; }
+      return true;
+    });
+  }
+  float(pos, text, color) {
+    const el = document.createElement('div');
+    el.className = 'float';
+    el.textContent = text;
+    if (color) el.style.color = color;
+    $('floats').appendChild(el);
+    this.floats.push({ el, pos: pos.clone(), age: 0 });
+  }
+  setTip(text) {
+    if (text === this.tip) return;
+    this.tip = text;
+    $('tip').textContent = text || '';
+  }
+  milestone(title, sub) {
+    this.milestoneQ.push({ title, sub });
+    if (this.milestoneQ.length === 1) this._showMs();
+  }
+  _showMs() {
+    const item = this.milestoneQ[0];
+    if (!item) return;
+    const el = $('milestone');
+    el.querySelector('h2').textContent = item.title;
+    el.querySelector('p').textContent = item.sub || '';
+    el.classList.add('show');
+    clearTimeout(this._msT);
+    this._msT = setTimeout(() => {
+      el.classList.remove('show');
+      this.milestoneQ.shift();
+      if (this.milestoneQ.length) setTimeout(() => this._showMs(), 220);
+    }, 2200);
+  }
+  confirm(title, sub, yes) {
+    $('modal').querySelector('h2').textContent = title;
+    $('modal').querySelector('p').textContent = sub;
+    $('modal').classList.add('show');
+    this._modalYes = yes;
+  }
+}
+
+class Tutorial {
+  constructor(game) {
+    this.game = game;
+    this.t = 0;
+    this.arrow = new THREE.Mesh(new THREE.ConeGeometry(0.22, 0.5, 10), mat(0xffd23f, { basic: true }));
+    this.arrow.rotation.x = Math.PI;
+    game.world.add(this.arrow);
+  }
+  step() {
+    const g = this.game;
+    const p = g.player;
+    const mill = g.machines.find((m) => m.id === 'mill');
+    if (!p.everPicked && p.carry.length === 0 && mill.input.length === 0 && mill.made === 0) {
+      return { x: g.station('rack').pad.x, z: g.station('rack').pad.z, text: (TOUCH ? 'Use the joystick or tap the floor. ' : 'Click the floor or use WASD. ') + 'Grab stock from the raw rack.' };
+    }
+    if (mill.made === 0 && mill.state !== 'run' && mill.output.length === 0 && !p.carry.some((i) => i.kind === 'part')) {
+      return { x: mill.inPad.x, z: mill.inPad.z, text: 'Stand on the mill INPUT pad. Stock drops in on its own.' };
+    }
+    if (mill.state === 'run' && mill.output.length === 0 && !p.carry.some((i) => i.kind === 'part')) {
+      return { x: mill.x, z: mill.z, text: 'Spindle is cutting. The status light turns green when the bracket is ready.' };
+    }
+    if (!g.servedOnce && (mill.output.length || p.carry.some((i) => i.kind === 'part'))) {
+      if (p.carry.some((i) => i.kind === 'part')) return { x: g.counter.serve.x, z: g.counter.serve.z, text: 'Deliver the bracket to the order counter.' };
+      return { x: mill.outPad.x, z: mill.outPad.z, text: 'Pick up the bracket on the OUTPUT pad.' };
+    }
+    if (!g.flags.boot && g.econ.runEarned > 0) {
+      const boot = CONFIG.unlocks[0]._rec;
+      return { x: boot.x, z: boot.z, text: 'Collect the cash, then stand on the glowing pad to buy Work Boots.' };
+    }
+    if (g.cashPiles.length && !g.flags.boot) return { x: g.counter.cash.x, z: g.counter.cash.z, text: 'Stand on the cash pad to pocket the payout.' };
+    return null;
+  }
+  update(dt) {
+    this.t += dt;
+    const s = this.t < 120 ? this.step() : null;
+    this.arrow.visible = !!s;
+    if (s) {
+      this.arrow.position.set(s.x, 2.15 + Math.sin(this.t * 4) * 0.12, s.z);
+      this.game.ui.setTip(s.text);
+    } else this.game.ui.setTip('');
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Game
+// ---------------------------------------------------------------------------
+class Game {
+  constructor(scene, camera, opts) {
+    this.scene = scene;
+    this.camera = camera;
+    opts = opts || {};
+    this.flags = { mill: true };
+    this.world = new THREE.Group();
+    scene.add(this.world);
+    this.marker = new THREE.Mesh(
+      new THREE.RingGeometry(0.32, 0.48, 24),
+      new THREE.MeshBasicMaterial({ color: 0xffd23a, side: THREE.DoubleSide, depthWrite: false })
+    );
+    this.marker.rotation.x = -Math.PI / 2;
+    this.marker.position.y = 0.04;
+    this.marker.visible = false;
+    this.marker.renderOrder = 2;
+    this.world.add(this.marker);
+    this.obstacles = [];
+    this.pads = [];
+    this.machines = [];
+    this.stations = [];
+    this.clients = [];
+    this.workers = [];
+    this.liveItems = [];
+    this.flyers = [];
+    this.cashPiles = [];
+    this.time = 0;
+    this.uid = 1;
+    this.level = 1;
+    this.servedOnce = false;
+    this.spawnIn = 0.4;
+    this.truckIn = 8;
+    this.shake = 0;
+    this.look = new THREE.Vector3(0, 0, 0.35);
+    this.camReady = false;
+    this._fwd = new THREE.Vector3();
+    this._right = new THREE.Vector3();
+    this.econ = new EconomyManager(this, opts.prestige, opts.lifetime);
+    this.ui = new UIManager(this);
+    this.fx = new FX(this.world);
+    this.buildWorld();
+    this.player = new Player(this);
+    this.tutorial = new Tutorial(this);
+    this.spawnClient(true);
+    if (opts.save) this.importState(opts.save);
+    this.ui.update();
+    this.updateCamera(1 / 60);
+    this._saveT = 0;
+  }
+  exportState() {
+    const flags = {};
+    const paid = {};
+    CONFIG.unlocks.forEach((u) => {
+      const rec = u._rec;
+      if (!rec) return;
+      if (rec.done) flags[u.id] = true;
+      else if (rec.paid > 0) paid[u.id] = rec.paid;
+    });
+    const workers = {};
+    this.workers.forEach((w) => { workers[w.role] = (workers[w.role] || 0) + 1; });
+    return {
+      v: 1,
+      cash: this.econ.cash,
+      runEarned: this.econ.runEarned,
+      lifetime: this.econ.lifetime,
+      prestige: this.econ.prestige,
+      level: this.level,
+      servedOnce: !!this.servedOnce,
+      levels: Object.assign({}, this.econ.levels),
+      flags: flags,
+      paid: paid,
+      workers: workers,
+      sound: Input.soundWanted
+    };
+  }
+  importState(data) {
+    const econ = this.econ;
+    econ.cash = Math.max(0, Math.round(data.cash) || 0);
+    econ.runEarned = Math.max(0, Math.round(data.runEarned) || 0);
+    econ.lifetime = Math.max(0, Math.round(data.lifetime) || 0);
+    econ.prestige = Math.max(1, Number(data.prestige) || 1);
+    if (data.levels && typeof data.levels === 'object') {
+      Object.keys(econ.levels).forEach((k) => {
+        const n = Math.round(Number(data.levels[k]));
+        if (n >= 0 && n < 100) econ.levels[k] = n;
+      });
+    }
+    this.level = Math.max(1, Math.round(Number(data.level)) || 1);
+    this.servedOnce = !!data.servedOnce;
+    const flags = data.flags || {};
+    if (econ.runEarned > 0 || this.servedOnce || Object.keys(flags).length) this.tutorial.t = 999;
+    CONFIG.unlocks.forEach((u) => {
+      if (!flags[u.id] || !u._rec || u._rec.done) return;
+      u._rec.paid = u.cost;
+      this.finishUnlock(u._rec, true);
+    });
+    const paid = data.paid || {};
+    CONFIG.unlocks.forEach((u) => {
+      const rec = u._rec;
+      if (!rec || rec.done) return;
+      const n = Math.round(Number(paid[u.id]));
+      if (n > 0) {
+        rec.paid = Math.min(u.cost - 1, n);
+        const text = u.name + '\n' + money(u.cost - rec.paid);
+        rec._t = text;
+        if (rec.label && rec.label.userData.setText) rec.label.userData.setText(text);
+      }
+    });
+    const workers = data.workers || {};
+    ['operator', 'hauler', 'cashier', 'forklift'].forEach((role) => {
+      const cap = role === 'forklift' ? 1 : 3;
+      const want = Math.max(0, Math.min(cap, Math.round(Number(workers[role])) || 0));
+      let have = this.workers.filter((w) => w.role === role).length;
+      while (have < want) {
+        this.spawnWorker(role);
+        have += 1;
+      }
+    });
+    if (data.sound === false) {
+      Input.soundWanted = false;
+      $('btn-sound').textContent = 'Sound off';
+    }
+    this.recolorFloors();
+    this.syncGates();
+  }
+  syncGates() {
+    this.obstacles.forEach((o) => {
+      if (!o.gate || !o.mesh) return;
+      const open = !!this.flags[o.gate];
+      o.mesh.visible = !open;
+      if (open) o.active = false;
+    });
+  }
+  recolorFloors() {
+    const colors = { garage: 0xffffff, workshop: 0xf0e2cc, factory: 0xe4ebf2, industrial: 0xe3ecdf };
+    Object.keys(CONFIG.zones).forEach((name) => {
+      const zone = CONFIG.zones[name];
+      const group = this['floor_' + name];
+      if (!group) return;
+      const locked = !!(zone.flag && !this.flags[zone.flag]);
+      const color = locked ? 0xb3bac2 : colors[name];
+      group.traverse((obj) => {
+        if (!obj.isMesh || obj.userData.base == null) return;
+        obj.material = mat(color, { kind: 'concrete' });
+        obj.userData.base = color;
+      });
+    });
+  }
+  unmount() {
+    disposeTree(this.world);
+    this.scene.remove(this.world);
+  }
+  buildWorld() {
+    this.yard();
+    this.floors();
+    this.walls();
+    this.sign();
+    this.stations.push(buildRack(this));
+    this.counter = buildCounter(this);
+    this.dock = null;
+    const mill = new Machine(this, 'mill', 0.05, -4.7, 'mill');
+    this.machines.push(mill);
+    CONFIG.unlocks.forEach((u) => this.makeUnlock(u));
+    this.trees();
+  }
+  yard() {
+    const yard = new THREE.Mesh(new THREE.PlaneGeometry(90, 90), mat(0xffffff, { kind: 'grass' }));
+    const uv = yard.geometry.attributes.uv;
+    for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * 18, uv.getY(i) * 18);
+    yard.rotation.x = -Math.PI / 2;
+    yard.position.y = -0.06;
+    yard.receiveShadow = true;
+    this.world.add(yard);
+  }
+  floors() {
+    const colors = { garage: 0xffffff, workshop: 0xf0e2cc, factory: 0xe4ebf2, industrial: 0xe3ecdf };
+    Object.keys(CONFIG.zones).forEach((name) => {
+      const zone = CONFIG.zones[name];
+      const group = new THREE.Group();
+      group.userData.zone = name;
+      const locked = !!(zone.flag && !this.flags[zone.flag]);
+      const color = locked ? 0xb3bac2 : colors[name];
+      const w = zone.vx1 - zone.vx0;
+      const d = zone.vz1 - zone.vz0;
+      const slab = addBox(group, w, 0.22, d, zone.vx0 + w / 2, -0.11, zone.vz0 + d / 2, color, 'concrete');
+      slab.userData.base = color;
+      this.world.add(group);
+      this['floor_' + name] = group;
+    });
+    // Painted route in the garage: rack to mill to counter.
+    [[-6.7, -3.2, 0.35, 0.08], [-4.2, -3.0, 0.35, 0.08], [-2.2, -2.9, 0.35, 0.08], [-0.9, -2.6, 0.2, 0.5], [0.9, -2.2, 0.2, 0.5], [1.4, 0.2, 0.2, 0.6], [1.8, 2.2, 0.2, 0.6], [2.2, 3.8, 0.2, 0.5]].forEach((s) => {
+      addBox(this.world, s[2], 0.015, s[3], s[0], 0.012, s[1], 0xe2b007, 'decal');
+    });
+  }
+  setZoneVisual(name, open) {
+    const g = this['floor_' + name];
+    if (!g) return;
+    g.visible = true;
+    g.position.y = open ? 0 : -0.02;
+    g.traverse((o) => { if (o.isMesh) o.material = mat(open ? o.userData.base || o.material.color.getHex() : 0xb0b8c0); });
+  }
+  walls() {
+    const H = 1.25;
+    const segs = [
+      // south
+      { x: 0, z: 9, w: 18, d: 0.35 },
+      // north sides + factory gate
+      { x: -7.25, z: -7, w: 3.5, d: 0.4 },
+      { x: 0, z: -7, w: 11, d: 0.4, gate: 'factory' },
+      { x: 7.25, z: -7, w: 3.5, d: 0.4 },
+      // west
+      { x: -9, z: -4.5, w: 0.4, d: 5 },
+      { x: -9, z: 1.5, w: 0.4, d: 7, gate: 'workshop' },
+      { x: -9, z: 7, w: 0.4, d: 4 },
+      // east
+      { x: 9, z: -4.5, w: 0.4, d: 5 },
+      { x: 9, z: 1.5, w: 0.4, d: 7, gate: 'industrial' },
+      { x: 9, z: 7, w: 0.4, d: 4 },
+      // outer shells
+      { x: -21, z: 1, w: 0.35, d: 16 },
+      { x: 0, z: -19, w: 18, d: 0.35 },
+      { x: 23, z: 0.5, w: 0.35, d: 17 },
+      { x: 16, z: -8, w: 14, d: 0.35 },
+      { x: 16, z: 9, w: 14, d: 0.35 },
+      { x: -15, z: -7, w: 12, d: 0.35 },
+      { x: -15, z: 9, w: 12, d: 0.35 }
+    ];
+    segs.forEach((s, i) => {
+      const group = new THREE.Group();
+      addBox(group, s.w, H, s.d, 0, H / 2, 0, 0xd4cfc6, 'concrete');
+      addBox(group, s.w, 0.08, s.d + 0.03, 0, H - 0.02, 0, 0x1d4e89, 'paint');
+      group.position.set(s.x, 0, s.z);
+      this.world.add(group);
+      const obs = this.addObstacle(s.x - s.w / 2, s.x + s.w / 2, s.z - s.d / 2, s.z + s.d / 2, 'wall' + i);
+      obs.gate = s.gate || null;
+      obs.mesh = group;
+    });
+  }
+  sign() {
+    // Back-wall billboard. The label is a sprite, so the words stay readable from the isometric camera.
+    const board = new THREE.Group();
+    addBox(board, 0.08, 2.5, 0.08, -1.15, -1.25, 0, 0xc5ccd3, 'steel');
+    addBox(board, 0.08, 2.5, 0.08, 1.15, -1.25, 0, 0xc5ccd3, 'steel');
+    addBox(board, 2.5, 0.06, 0.06, 0, 0.42, 0, 0xe2b007, 'plastic');
+    const label = makeLabel('CNC READY', { w: 512, h: 150, sx: 2.35, sy: 0.68, bg: '#1d2a3a', fg: '#ffffff' });
+    board.add(label);
+    board.position.set(5.85, 2.55, -6.55);
+    this.world.add(board);
+    this.addObstacle(4.6, 7.1, -6.75, -6.35, 'sign');
+  }
+  trees() {
+    [[-12, 12], [12, 12], [24, 6], [-16, -10], [6, -16]].forEach(([x, z]) => {
+      addCyl(this.world, 0.14, 0.18, 0.9, x, 0.45, z, 0x6b4f3a, 8, 'wood');
+      addCyl(this.world, 0.85, 0.2, 1.25, x, 1.35, z, 0x2f6b3a, 10, 'leaf');
+    });
+  }
+  addObstacle(minX, maxX, minZ, maxZ, id) {
+    const o = { minX, maxX, minZ, maxZ, id, active: true, gate: null };
+    this.obstacles.push(o);
+    return o;
+  }
+  addPad(pad) {
+    pad.radius = pad.radius || CONFIG.interact;
+    if (!pad.active) pad.active = () => true;
+    this.pads.push(pad);
+    return pad;
+  }
+  makeUnlock(u) {
+    const padPos = this.unlockPadPosition(u);
+    const root = new THREE.Group();
+    root.position.set(padPos.x, 0.03, padPos.z);
+    const disc = new THREE.Mesh(new THREE.CylinderGeometry(0.72, 0.72, 0.08, 20), new THREE.MeshBasicMaterial({ color: 0xffd23a }));
+    root.add(disc);
+    const label = makeLabel(u.name + '\n' + money(u.cost), { w: 320, h: 160, sx: 1.55, sy: 0.78 });
+    label.position.y = 0.85;
+    root.add(label);
+    this.world.add(root);
+    let ghost = null;
+    if (u.type === 'machine' || u.type === 'station') {
+      ghost = new THREE.Mesh(new THREE.BoxGeometry(1.6, 1.1, 1.2), mat(0x9ad0ff, { basic: true, opacity: 0.18 }));
+      ghost.position.set(u.x, 0.7, u.z);
+      this.world.add(ghost);
+    }
+    const rec = {
+      cfg: u, root, disc, label, ghost, paid: 0, done: false, bank: 0,
+      x: padPos.x, z: padPos.z,
+      active: () => !rec.done && u.requires.every((id) => this.flags[id]),
+      drain: (dt) => this.drainUnlock(rec, dt),
+      use: null
+    };
+    this.addPad(rec);
+    rec.root.visible = false;
+    if (ghost) ghost.visible = false;
+    u._rec = rec;
+  }
+  unlockPadPosition(u) {
+    if (u.type === 'machine') {
+      const hd = 0.86;
+      return { x: u.x, z: u.z + hd + 0.95 };
+    }
+    if (u.type === 'station') {
+      const hd = u.station === 'saw' ? 0.55 : 0.62;
+      return { x: u.x, z: u.z + hd + 0.95 };
+    }
+    return { x: u.x, z: u.z };
+  }
+  drainUnlock(rec, dt) {
+    if (!rec.active() || rec.done) return;
+    const playerOn = Math.hypot(this.player.root.position.x - rec.x, this.player.root.position.z - rec.z) <= CONFIG.interact;
+    if (!playerOn || this.econ.cash <= 0 || rec.paid >= rec.cfg.cost) return;
+    const rate = Math.max(18, rec.cfg.cost * 0.55);
+    rec.bank += rate * dt;
+    let pay = Math.floor(rec.bank);
+    rec.bank -= pay;
+    pay = Math.min(pay, this.econ.cash, rec.cfg.cost - rec.paid);
+    if (pay > 0) {
+      this.econ.cash -= pay;
+      rec.paid += pay;
+      if (Math.random() < 0.35) this.fx.burst(new THREE.Vector3(rec.x, 0.4, rec.z), 0xffd23a, 1);
+    }
+    const left = rec.cfg.cost - rec.paid;
+    const text = rec.cfg.name + '\n' + (left <= 0 ? 'READY' : money(left));
+    if (text !== rec._t) { rec._t = text; rec.label.userData.setText(text); }
+    if (rec.paid >= rec.cfg.cost) this.finishUnlock(rec);
+  }
+  finishUnlock(rec, quiet) {
+    if (rec.done) return;
+    rec.done = true;
+    const u = rec.cfg;
+    this.flags[u.id] = true;
+    rec.root.visible = false;
+    if (rec.ghost) { this.world.remove(rec.ghost); disposeTree(rec.ghost); rec.ghost = null; }
+    if (u.type === 'stat' && !quiet) this.econ.levels[u.stat] += u.amount;
+    if (u.type === 'machine') {
+      this.buildMachine(u);
+      if (quiet) {
+        const built = this.machines[this.machines.length - 1];
+        built.pop = 1;
+        built.root.scale.setScalar(1);
+      }
+    }
+    if (u.type === 'station') this.buildStation(u);
+    if (u.type === 'zone') this.openZone(u);
+    if (u.type === 'hire') this.spawnWorker(u.role);
+    if (u.type === 'dock') {
+      this.dock = buildDock(this);
+      this.truckIn = quiet ? 8 : 4;
+    } else if (u.type === 'office') this.buildOffice(!!quiet);
+    if (quiet) return;
+    if (u.type === 'flag') this.ui.milestone(u.name, u.blurb);
+    if (u.type === 'dock') this.ui.milestone('Loading dock open', 'Trucks will pull up for crate orders');
+    if (u.type !== 'flag' && u.type !== 'dock') {
+      const titles = { stat: 'Upgrade installed', machine: 'New machine unlocked!', station: 'New station unlocked!', zone: 'Shop expanded!', hire: 'Crew hired', office: 'Office open' };
+      this.ui.milestone(titles[u.type] || 'Unlocked', u.name);
+    }
+    this.shake = Math.min(0.4, this.shake + (u.type === 'zone' ? 0.28 : 0.12));
+    Sfx.unlock();
+    if (u.pan) this.pan = { x: u.pan[0], z: u.pan[1], t: 0, dur: 2.5 };
+  }
+  buildMachine(u) {
+    const id = u.id === 'mill2' ? 'mill2' : u.machine;
+    const m = new Machine(this, u.machine, u.x, u.z, id);
+    m.pop = 0.05;
+    m.root.scale.setScalar(0.05);
+    this.machines.push(m);
+    if (this.blocked(this.player.root.position.x, this.player.root.position.z, CONFIG.player.radius)) {
+      this.player.root.position.z += 1.5;
+    }
+  }
+  buildStation(u) {
+    const map = {
+      saw: { kind: 'saw', title: 'Manual saw', color: 0x6c757d, hw: 0.7, hd: 0.55 },
+      deburr: { kind: 'deburr', title: 'Deburr', color: 0x495057, hw: 0.8, hd: 0.62 },
+      inspection: { kind: 'inspection', title: 'Inspection', color: 0x1d3557, hw: 0.8, hd: 0.62 },
+      packing: { kind: 'packing', title: 'Packing', color: 0xbc6c25, hw: 0.85, hd: 0.65 }
+    };
+    const spec = map[u.station];
+    const s = buildProcessor(this, Object.assign({ id: u.id, x: u.x, z: u.z, solid: true }, spec));
+    this.stations.push(s);
+  }
+  openZone(u) {
+    this.flags[u.zone] = true;
+    this.obstacles.forEach((o) => { if (o.gate === u.zone) o.active = false; });
+    // Hide the gate wall meshes that share this gate id. They were stored only on the obstacle.
+    this.world.traverse((obj) => {
+      if (obj.userData && obj.userData.gate === u.zone) obj.visible = false;
+    });
+  }
+  buildOffice(quiet) {
+    const root = new THREE.Group();
+    root.position.set(14.6, 0, -4.3);
+    addBox(root, 2.4, 1.0, 1.4, 0, 0.5, 0, 0xe7dfd2, 'paint');
+    addBox(root, 1.1, 0.08, 0.6, 0, 1.02, 0, 0x6f4e37);
+    addBox(root, 0.7, 0.45, 0.05, 0.4, 1.25, -0.3, 0x48cae4, true);
+    addBox(root, 0.4, 0.45, 0.4, -0.7, 0.25, 0.4, 0x343a40);
+    this.world.add(root);
+    this.addObstacle(14.6 - 1.2, 14.6 + 1.2, -4.3 - 0.7, -4.3 + 0.7, 'office');
+    this.officePos = new THREE.Vector3(14.6, 1.4, -4.3);
+    if (!quiet) this.ui.milestone('Office open', 'The shop now earns passive income');
+  }
+  spawnWorker(role) {
+    const spots = { operator: [-6.2, -2.2], hauler: [1.5, -2.2], cashier: [2.2, 3.6], forklift: [14, 5.2] };
+    const s = spots[role];
+    const w = new Worker(this, role, s[0], s[1]);
+    this.workers.push(w);
+    this.flags[role] = true;
+  }
+  station(id) { return this.stations.find((s) => s.id === id); }
+  inside(x, zz, r) {
+    const names = Object.keys(CONFIG.zones);
+    for (let i = 0; i < names.length; i++) {
+      const zone = CONFIG.zones[names[i]];
+      if (zone.flag && !this.flags[zone.flag]) continue;
+      if (x >= zone.x0 + r && x <= zone.x1 - r && zz >= zone.z0 + r && zz <= zone.z1 - r) return true;
+    }
+    return false;
+  }
+  blocked(x, z, r) {
+    for (let i = 0; i < this.obstacles.length; i++) {
+      const o = this.obstacles[i];
+      if (!o.active) continue;
+      if (o.gate && this.flags[o.gate]) continue;
+      const cx = Math.max(o.minX, Math.min(x, o.maxX));
+      const cz = Math.max(o.minZ, Math.min(z, o.maxZ));
+      const dx = x - cx;
+      const dz = z - cz;
+      if (dx * dx + dz * dz < r * r) return true;
+    }
+    return false;
+  }
+  moveBody(pos, dx, dz, r) {
+    const steps = Math.max(1, Math.ceil(Math.hypot(dx, dz) / 0.2));
+    const sx = dx / steps;
+    const sz = dz / steps;
+    for (let i = 0; i < steps; i++) {
+      const nx = pos.x + sx;
+      if (this.inside(nx, pos.z, r) && !this.blocked(nx, pos.z, r)) pos.x = nx;
+      const nz = pos.z + sz;
+      if (this.inside(pos.x, nz, r) && !this.blocked(pos.x, nz, r)) pos.z = nz;
+    }
+  }
+  nearestPad(x, z) {
+    let best = null;
+    let bestD = CONFIG.interact;
+    for (let i = 0; i < this.pads.length; i++) {
+      const p = this.pads[i];
+      if (p.active && !p.active()) continue;
+      const d = Math.hypot(x - p.x, z - p.z);
+      if (d < bestD) { bestD = d; best = p; }
+    }
+    return best;
+  }
+  cameraBasis() {
+    this.camera.getWorldDirection(this._fwd);
+    this._fwd.y = 0;
+    if (this._fwd.lengthSq() < 1e-8) this._fwd.set(0, 0, -1);
+    else this._fwd.normalize();
+    this._right.crossVectors(this._fwd, UP);
+    if (this._right.lengthSq() < 1e-8) this._right.set(1, 0, 0);
+    else this._right.normalize();
+    return { fwd: this._fwd, right: this._right };
+  }
+  updateCamera(dt) {
+    const anchor = this.player.root.position;
+    let ax = anchor.x;
+    let az = anchor.z + CONFIG.cam.lookZ;
+    if (this.pan) {
+      this.pan.t += dt;
+      const u = Math.min(1, this.pan.t / this.pan.dur);
+      const tri = u < 0.5 ? u * 2 : (1 - u) * 2;
+      const k = tri * tri * (3 - 2 * tri);
+      ax = anchor.x + (this.pan.x - anchor.x) * k;
+      az = anchor.z + CONFIG.cam.lookZ + (this.pan.z - anchor.z) * k;
+      if (u >= 1) this.pan = null;
+    }
+    const desired = this._camTarget || (this._camTarget = new THREE.Vector3());
+    desired.set(ax, 0, az);
+    if (!this.camReady) { this.look.copy(desired); this.camReady = true; }
+    else this.look.lerp(desired, 1 - Math.exp(-4.2 * Math.max(dt, 1 / 120)));
+    this.camera.position.copy(this.look);
+    this.camera.position.x += CONFIG.cam.x;
+    this.camera.position.y += CONFIG.cam.y;
+    this.camera.position.z += CONFIG.cam.z;
+    if (this.shake > 0) {
+      this.camera.position.x += (Math.random() - 0.5) * this.shake;
+      this.camera.position.y += (Math.random() - 0.5) * this.shake;
+      this.shake *= Math.exp(-6 * dt);
+      if (this.shake < 0.004) this.shake = 0;
+    }
+    this.camera.lookAt(this.look.x, this.look.y + 1.05, this.look.z);
+    this.camera.updateMatrixWorld();
+    const sun = this.scene.userData.sun;
+    if (sun) {
+      sun.position.set(this.look.x + 12, 26, this.look.z + 7);
+      sun.target.position.set(this.look.x, 0, this.look.z);
+      sun.target.updateMatrixWorld();
+    }
+  }
+  createItem(kind, partId) {
+    const item = {
+      id: this.uid++, kind, partId: partId || null, bonus: 1, tip: 0,
+      deburred: false, inspected: false, committed: false, flying: false, dead: false,
+      mesh: buildItemMesh(kind, partId)
+    };
+    this.liveItems.push(item);
+    this.world.add(item.mesh);
+    return item;
+  }
+  retire(item) {
+    if (!item || item.dead) return;
+    item.dead = true;
+    const i = this.liveItems.indexOf(item);
+    if (i >= 0) this.liveItems.splice(i, 1);
+    if (item.mesh.parent) item.mesh.parent.remove(item.mesh);
+    disposeTree(item.mesh);
+  }
+  transfer(item, fromList, toList, toAnchor, cap) {
+    if (!item || item.flying || item.dead) return false;
+    const idx = fromList.indexOf(item);
+    if (idx < 0) return false;
+    if (toList.length + (toList.res || 0) >= cap) return false;
+    fromList.splice(idx, 1);
+    toList.res = (toList.res || 0) + 1;
+    item.flying = true;
+    const from = item.mesh.getWorldPosition(new THREE.Vector3());
+    if (item.mesh.parent) item.mesh.parent.remove(item.mesh);
+    this.world.add(item.mesh);
+    item.mesh.position.copy(from);
+    this.flyers.push({ item, from, toList, toAnchor, t: 0, dur: 0.18 });
+    Sfx.pickup();
+    item.squash = 1;
+    return true;
+  }
+  flyNew(item, from, toList, toAnchor, cap) {
+    if (toList.length + (toList.res || 0) >= cap) { this.retire(item); return false; }
+    toList.res = (toList.res || 0) + 1;
+    item.flying = true;
+    if (item.mesh.parent) item.mesh.parent.remove(item.mesh);
+    this.world.add(item.mesh);
+    item.mesh.position.copy(from);
+    this.flyers.push({ item, from: from.clone(), toList, toAnchor, t: 0, dur: 0.18 });
+    Sfx.pickup();
+    return true;
+  }
+  updateFlyers(dt) {
+    for (let i = this.flyers.length - 1; i >= 0; i--) {
+      const f = this.flyers[i];
+      f.t += dt;
+      const u = Math.min(1, f.t / f.dur);
+      const e = u * u * (3 - 2 * u);
+      const target = f.toAnchor.getWorldPosition(new THREE.Vector3());
+      target.y += 0.25 + Math.min(5, f.toList.length) * 0.12;
+      const y = Math.sin(Math.PI * u) * 0.85;
+      f.item.mesh.position.lerpVectors(f.from, target, e);
+      f.item.mesh.position.y += y;
+      if (u >= 1) {
+        f.toList.res = Math.max(0, (f.toList.res || 1) - 1);
+        f.item.flying = false;
+        f.toList.push(f.item);
+        this.flyers.splice(i, 1);
+        Sfx.drop();
+      }
+    }
+  }
+  layoutStack(anchor, list, mode, speed) {
+    if (!anchor || !list) return;
+    const wobble = mode === 'carry' ? (speed || 0) : 0;
+    for (let i = 0; i < list.length; i++) {
+      const item = list[i];
+      if (!item || item.flying || item.dead) continue;
+      if (item.mesh.parent !== anchor) anchor.add(item.mesh);
+      if (mode === 'carry') {
+        item.mesh.position.set(Math.sin(this.time * 7 + i) * 0.03 * Math.min(1, wobble), i * 0.2, 0);
+        item.mesh.rotation.z = Math.sin(this.time * 6 + i) * 0.08 * Math.min(1, wobble);
+      } else if (mode === 'shelf') {
+        const col = i % 6;
+        item.mesh.position.set((col - 2.5) * 0.28, Math.floor(i / 6) * 0.22, 0);
+      } else {
+        item.mesh.position.set(((i % 3) - 1) * 0.2, 0.12 + Math.floor(i / 3) * 0.2, 0);
+      }
+      if (item.squash) {
+        item.squash = Math.max(0, item.squash - 0.08);
+        const s = 1 + item.squash * 0.35;
+        item.mesh.scale.set(1 / s, s, 1 / s);
+      } else if (item.mesh.scale.y !== 1) item.mesh.scale.set(1, 1, 1);
+    }
+  }
+  dropNear(item, x, z) {
+    item.committed = false;
+    item.flying = false;
+    this.world.add(item.mesh);
+    item.mesh.position.set(x, 0.4, z);
+    // Park recovered parts on the counter shelf if there is room, else a loose pile list.
+    if (!this.loose) { this.loose = []; this.loose.res = 0; this.looseAnchor = new THREE.Group(); this.world.add(this.looseAnchor); this.looseAnchor.position.set(x, 0, z); }
+    this.loose.push(item);
+  }
+  spawnCash(total, x, z) {
+    total = Math.round(total);
+    if (total <= 0) return;
+    // A few visible piles that sum to the payout.
+    const piles = Math.min(6, Math.max(1, Math.round(total / 20)));
+    let left = total;
+    for (let i = 0; i < piles; i++) {
+      const value = i === piles - 1 ? left : Math.max(1, Math.round(total / piles));
+      left -= value;
+      const mesh = new THREE.Group();
+      const discs = Math.min(5, 1 + Math.round(value / 15));
+      for (let d = 0; d < discs; d++) addCyl(mesh, 0.12, 0.12, 0.035, 0, 0.04 + d * 0.04, 0, 0xffc107, 10);
+      mesh.position.set(x + (i - piles / 2) * 0.22, 0.05, z);
+      this.world.add(mesh);
+      this.cashPiles.push({ value, mesh, x: mesh.position.x, z: mesh.position.z, taken: false });
+    }
+    this.ui.float(new THREE.Vector3(x, 1.6, z), '+' + money(total), '#128a4a');
+  }
+  collectNearestCash(x, z, rad) {
+    let best = null;
+    let bestD = rad;
+    for (let i = 0; i < this.cashPiles.length; i++) {
+      const p = this.cashPiles[i];
+      if (p.taken) continue;
+      const d = Math.hypot(p.x - x, p.z - z);
+      if (d < bestD) { bestD = d; best = p; }
+    }
+    if (!best) return false;
+    return this.collectPile(best);
+  }
+  collectPile(pile) {
+    if (!pile || pile.taken) return false;
+    pile.taken = true;
+    this.econ.addCash(pile.value, pile.mesh.position, false);
+    this.world.remove(pile.mesh);
+    disposeTree(pile.mesh);
+    this.cashPiles = this.cashPiles.filter((p) => p !== pile);
+    Sfx.cash();
+    return true;
+  }
+  nearestLooseCash() {
+    let best = null;
+    let bestD = 1e9;
+    const origin = this.workers.find((w) => w.role === 'cashier');
+    if (!origin) return this.cashPiles.find((p) => !p.taken) || null;
+    this.cashPiles.forEach((p) => {
+      if (p.taken) return;
+      const d = Math.hypot(p.x - origin.root.position.x, p.z - origin.root.position.z);
+      if (d < bestD) { bestD = d; best = p; }
+    });
+    return best;
+  }
+  onEarned(amount, pos) {
+    const prev = this.level;
+    this.level = 1;
+    for (let i = 0; i < CONFIG.levels.length; i++) if (this.econ.runEarned >= CONFIG.levels[i]) this.level = i + 1;
+    if (this.level > prev) this.ui.milestone('Level ' + this.level, this.zoneName());
+  }
+  zoneName() {
+    if (this.flags.industrial) return 'Industrial Plant';
+    if (this.flags.factory) return 'Factory Floor';
+    if (this.flags.workshop) return 'Workshop';
+    return 'Garage';
+  }
+  nextGoal() {
+    let best = null;
+    CONFIG.unlocks.forEach((u) => {
+      if (u._rec && u._rec.done) return;
+      if (!u.requires.every((id) => this.flags[id])) return;
+      if (!best || u.cost < best.cost) best = u;
+    });
+    if (!best) return this.flags.office ? 'Keep the spindles fed' : 'Run the floor';
+    const left = best._rec ? best.cost - best._rec.paid : best.cost;
+    return 'Next: ' + best.name + '  ' + money(left);
+  }
+  partsAvailable() {
+    const p = ['bracket'];
+    if (this.flags.lathe) p.push('shaft', 'flange');
+    if (this.flags.gear) p.push('gear');
+    if (this.flags.housing) p.push('housing');
+    if (this.flags.fiveaxis) p.push('impeller');
+    return p;
+  }
+  pickPart() {
+    const parts = this.partsAvailable();
+    let total = 0;
+    const w = parts.map((id) => { const wt = 1 / Math.sqrt(CONFIG.parts[id].price); total += wt; return wt; });
+    let r = Math.random() * total;
+    for (let i = 0; i < parts.length; i++) { r -= w[i]; if (r <= 0) return parts[i]; }
+    return parts[0];
+  }
+  queueSlot(i) {
+    return { x: 1.7 + i * 1.45, z: 7.45 };
+  }
+  spawnClient(first) {
+    if (this.clients.filter((c) => !c.leaving).length >= 4) return;
+    const partId = first ? 'bracket' : this.pickPart();
+    const contractor = !first && this.flags.lathe && Math.random() < 0.26;
+    const price = CONFIG.parts[partId].price;
+    let qty = 1;
+    if (!first && contractor) qty = price > 60 ? 2 : 3;
+    else if (!first && price < 20 && Math.random() < 0.5) qty = 2;
+    const order = { partId, need: qty };
+    const client = new Client(this, order, {
+      payMult: contractor ? 1.55 : 1,
+      patience: (first ? 90 : (contractor ? 40 : 32)) * this.econ.patienceMult(),
+      shirt: contractor ? 0x1d3557 : [0xef476f, 0x06d6a0, 0x118ab2, 0xffd166, 0x9b5de5][Math.floor(Math.random() * 5)],
+      hat: contractor ? 0xf8f9fa : 0x343a40,
+      x: first ? 3.2 : 8.2,
+      z: first ? 8.1 : 7.6
+    });
+    this.clients.push(client);
+    this.assignSlots();
+  }
+  assignSlots() {
+    let i = 0;
+    this.clients.forEach((c) => { if (!c.leaving) c.slot = i++; });
+  }
+  frontOrderText() {
+    const c = this.clients.find((x) => !x.leaving);
+    if (!c) return { text: 'Waiting for a client…', color: '#ccc' };
+    const part = CONFIG.parts[c.order.partId];
+    return { text: part.name + '  ×' + (c.order.need - c.held.length), color: part.color };
+  }
+  serveTick(dt) {
+    const near = this.player && Math.hypot(this.player.root.position.x - this.counter.serve.x, this.player.root.position.z - this.counter.serve.z) < 1.15;
+    const cashier = this.workers.some((w) => w.role === 'cashier');
+    if (!near && !cashier) return;
+    this._serveCd = (this._serveCd || 0) - dt;
+    if (this._serveCd > 0) return;
+    const shelf = this.counter.shelf;
+    for (let ci = 0; ci < this.clients.length; ci++) {
+      const c = this.clients[ci];
+      if (c.leaving || !c.inPlace) continue;
+      const needLeft = c.order.need - c.held.length;
+      if (needLeft <= 0) continue;
+      let idx = -1;
+      if (needLeft >= 3) idx = shelf.findIndex((it) => it.kind === 'crate' && it.partId === c.order.partId && !it.flying);
+      if (idx < 0) idx = shelf.findIndex((it) => it.kind === 'part' && it.partId === c.order.partId && !it.flying);
+      if (idx < 0) continue;
+      const item = shelf.splice(idx, 1)[0];
+      item.committed = true;
+      c.held.push(item);
+      if (item.kind === 'crate') {
+        // A crate covers 3 units. If that overshoots, still accept when needLeft >= 3.
+      }
+      if (item.mesh.parent) item.mesh.parent.remove(item.mesh);
+      if (c.held.reduce((s, it) => s + (it.kind === 'crate' ? 3 : 1), 0) >= c.order.need) c.complete();
+      this._serveCd = cashier ? 0.06 : 0.12;
+      return;
+    }
+  }
+  orderedPartIds() {
+    const ids = [];
+    this.clients.forEach((c) => {
+      if (c.leaving) return;
+      if (c.order.need - c.held.length > 0 && ids.indexOf(c.order.partId) < 0) ids.push(c.order.partId);
+    });
+    if (this.truck && this.truck.state === 'wait' && ids.indexOf(this.truck.partId) < 0) ids.push(this.truck.partId);
+    return ids;
+  }
+  unfilled(partId) {
+    let n = 0;
+    this.clients.forEach((c) => {
+      if (c.leaving || c.order.partId !== partId) return;
+      const have = c.held.reduce((s, it) => s + (it.kind === 'crate' ? 3 : 1), 0);
+      n += Math.max(0, c.order.need - have);
+    });
+    if (this.truck && this.truck.state === 'wait' && this.truck.partId === partId) {
+      n += Math.max(0, this.truck.need - this.truck.loaded.length) * 3;
+    }
+    return n;
+  }
+  freeSupply(partId) {
+    let n = 0;
+    this.liveItems.forEach((it) => {
+      if (it.dead || it.committed) return;
+      if (it.kind === 'part' && it.partId === partId) n += 1;
+      else if (it.kind === 'crate' && it.partId === partId) n += 3;
+    });
+    return n;
+  }
+  incoming(partId) {
+    let n = 0;
+    this.machines.forEach((m) => {
+      if (m.state !== 'run' || !m.recipe) return;
+      if (m.recipe.kind === 'part' && m.recipe.partId === partId) n += m.make || 1;
+    });
+    return n;
+  }
+  shortfall(partId) {
+    return Math.max(0, this.unfilled(partId) - this.freeSupply(partId) - this.incoming(partId));
+  }
+  blankShortage() {
+    let blanks = 0;
+    let incomingB = 0;
+    this.liveItems.forEach((it) => { if (!it.dead && !it.committed && it.kind === 'blank') blanks++; });
+    this.machines.forEach((m) => { if (m.state === 'run' && m.recipe && m.recipe.kind === 'blank') incomingB += 1; });
+    const gearsIncoming = this.incoming('gear');
+    return Math.max(0, this.unfilled('gear') - this.freeSupply('gear') - gearsIncoming - blanks - incomingB);
+  }
+  hungryMachine(preferCut) {
+    let best = null;
+    this.machines.forEach((m) => { if (m.needsStock() && !best) best = m; });
+    void preferCut;
+    return best;
+  }
+  destFor(item) {
+    if (item.kind === 'blank') {
+      const lathe = this.machines.find((m) => m.machineType === 'lathe' && m.input.length + (m.input.res || 0) < m.inCap);
+      if (!lathe) return null;
+      return { x: lathe.inPad.x, z: lathe.inPad.z, take: (it) => this.transfer(it, this.workerCarryOf(it), lathe.input, lathe.inAnchor, lathe.inCap) };
+    }
+    if (item.kind === 'crate') {
+      if (this.truck && this.truck.state === 'wait' && item.partId === this.truck.partId && this.dock) {
+        return { x: this.dock.pad.x, z: this.dock.pad.z, take: (it) => loadDock(this, this.dock, { carry: this.workerCarryOf(it) }) };
+      }
+      return null;
+    }
+    if (item.kind === 'part') {
+      const deburr = this.station('deburr');
+      if (deburr && !item.deburred && deburr.input.length + (deburr.input.res || 0) < deburr.inCap) {
+        return { x: deburr.pad.x, z: deburr.pad.z, take: (it) => this.transfer(it, this.workerCarryOf(it), deburr.input, deburr.inAnchor, deburr.inCap) };
+      }
+      const ins = this.station('inspection');
+      if (ins && !item.inspected && (item.deburred || !deburr) && ins.input.length + (ins.input.res || 0) < ins.inCap) {
+        return { x: ins.pad.x, z: ins.pad.z, take: (it) => this.transfer(it, this.workerCarryOf(it), ins.input, ins.inAnchor, ins.inCap) };
+      }
+      if (this.shouldPack(item)) {
+        const pack = this.station('packing');
+        if (pack && pack.input.length + (pack.input.res || 0) < pack.inCap) {
+          return { x: pack.pad.x, z: pack.pad.z, take: (it) => this.transfer(it, this.workerCarryOf(it), pack.input, pack.inAnchor, pack.inCap) };
+        }
+      }
+      if (this.counter.shelf.length + (this.counter.shelf.res || 0) < 18) {
+        return {
+          x: this.counter.serve.x, z: this.counter.serve.z,
+          take: (it) => this.transfer(it, this.workerCarryOf(it), this.counter.shelf, this.counter.shelfAnchor, 18)
+        };
+      }
+    }
+    return null;
+  }
+  workerCarryOf(item) {
+    const w = this.workers.find((wk) => wk.carry.indexOf(item) >= 0);
+    return w ? w.carry : [];
+  }
+  shouldPack(item) {
+    if (!this.flags.packing || !this.truck || this.truck.state !== 'wait') return false;
+    if (item.partId !== this.truck.partId) return false;
+    const need = (this.truck.need - this.truck.loaded.length) * 3;
+    let crates = 0;
+    let loose = 0;
+    this.liveItems.forEach((it) => {
+      if (it.dead || it.committed || it.partId !== item.partId) return;
+      if (it.kind === 'crate') crates++;
+      if (it.kind === 'part') loose++;
+    });
+    return crates < (this.truck.need - this.truck.loaded.length) && loose + 1 >= 3 && need > crates * 3;
+  }
+  findHaulItem() {
+    const pools = [];
+    this.machines.forEach((m) => pools.push({ list: m.output, pad: m.outPad, anchor: m.outAnchor }));
+    this.stations.forEach((s) => { if (s.output && s.pad) pools.push({ list: s.output, pad: s.pad }); });
+    if (this.loose) pools.push({ list: this.loose, pad: { x: this.looseAnchor.position.x, z: this.looseAnchor.position.z } });
+    // Blanks first so gears don't stall.
+    for (let p = 0; p < pools.length; p++) {
+      const list = pools[p].list;
+      for (let i = 0; i < list.length; i++) {
+        const item = list[i];
+        if (!item || item.flying || item.dead) continue;
+        if (item.kind === 'blank' && this.destFor(item)) return { item, list, pad: pools[p].pad };
+      }
+    }
+    for (let p = 0; p < pools.length; p++) {
+      const list = pools[p].list;
+      for (let i = 0; i < list.length; i++) {
+        const item = list[i];
+        if (!item || item.flying || item.dead || item.kind === 'stock' || item.kind === 'cut') continue;
+        if (item.kind === 'blank') continue;
+        if (this.destFor(item)) return { item, list, pad: pools[p].pad };
+      }
+    }
+    return null;
+  }
+  findCrate(partId) {
+    const pools = [];
+    const pack = this.station('packing');
+    if (pack) pools.push({ list: pack.output, pad: pack.pad });
+    if (this.dock) pools.push({ list: this.dock.holding, pad: this.dock.pad });
+    this.workers.forEach(() => {});
+    for (let p = 0; p < pools.length; p++) {
+      const list = pools[p].list;
+      for (let i = 0; i < list.length; i++) {
+        const item = list[i];
+        if (!item || item.flying || item.kind !== 'crate') continue;
+        if (partId && item.partId !== partId) continue;
+        return { item, list, pad: pools[p].pad };
+      }
+    }
+    return null;
+  }
+  update(dt) {
+    this.time += dt;
+    this.player.update(dt);
+    this.machines.forEach((m) => m.update(dt));
+    this.stations.forEach((s) => { if (s.tick) s.tick(dt); });
+    this.assignSlots();
+    this.clients.forEach((c) => c.update(dt));
+    this.clients = this.clients.filter((c) => {
+      if (!c.dead) return true;
+      this.world.remove(c.root);
+      disposeTree(c.root);
+      return false;
+    });
+    this.serveTick(dt);
+    this.workers.forEach((w) => w.update(dt));
+    if (this.truck) {
+      this.truck.update(dt);
+      if (this.truck.dead) {
+        this.world.remove(this.truck.root);
+        disposeTree(this.truck.root);
+        this.truck.obstacle.active = false;
+        this.truck = null;
+      }
+    }
+    this.updateFlyers(dt);
+    this.updatePads(dt);
+    this.updateSpawns(dt);
+    this.updatePassive(dt);
+    this.fx.update(dt);
+    this.tutorial.update(dt);
+    this.updateCamera(dt);
+    this.ui.update();
+    this.syncGates();
+    this._saveT = (this._saveT || 0) + dt;
+    if (this._saveT >= 2) {
+      this._saveT = 0;
+      Save.write(this);
+    }
+  }
+  updatePads(dt) {
+    CONFIG.unlocks.forEach((u) => {
+      const rec = u._rec;
+      if (!rec || rec.done) return;
+      const on = rec.active();
+      rec.root.visible = on;
+      if (rec.ghost) rec.ghost.visible = on;
+      if (on) {
+        const pulse = 1 + Math.sin(this.time * 4) * 0.06;
+        rec.disc.scale.setScalar(pulse);
+      }
+    });
+    void dt;
+  }
+  updateSpawns(dt) {
+    this.spawnIn -= dt;
+    if (this.spawnIn <= 0) {
+      this.spawnClient(false);
+      this.spawnIn = this.econ.clientInterval();
+    }
+    if (this.flags.dock) {
+      this.truckIn -= dt;
+      if (!this.truck && this.truckIn <= 0) {
+        this.truck = new Truck(this);
+        this.truckIn = 55;
+      }
+    }
+  }
+  updatePassive(dt) {
+    const rate = this.econ.officeRate();
+    if (rate <= 0) return;
+    this.econ.passiveFrac += rate * dt;
+    if (this.econ.passiveFrac >= 1) {
+      const n = Math.floor(this.econ.passiveFrac);
+      this.econ.passiveFrac -= n;
+      this.econ.addCash(n, this.officePos, true);
+      if (n > 0 && this.officePos) this.ui.float(this.officePos.clone(), '+' + money(n), '#1d6dff');
+    }
+  }
+  askPrestige() {
+    if (!(this.econ.lifetime >= CONFIG.prestigeGate || this.flags.office)) return;
+    this.ui.confirm('Open a new factory?', 'Resets machines, cash, and upgrades. Permanent pay becomes x' + (this.econ.prestige + CONFIG.prestigeStep).toFixed(2) + '.', () => {
+      this.pendingPrestige = true;
+    });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Boot
+// ---------------------------------------------------------------------------
+function applyFov(camera) {
+  const aspect = window.innerWidth / Math.max(1, window.innerHeight);
+  let fov = CONFIG.cam.fov;
+  // Vertical fov. A tall phone would crop the shop sideways, so open the lens until the floor fits.
+  if (aspect < 1) fov += Math.min(1, (1 - aspect) / 0.55) * 18;
+  camera.fov = fov;
+  camera.aspect = aspect;
+  camera.updateProjectionMatrix();
+}
+function boot() {
+  if (!window.THREE) {
+    const el = document.createElement('pre');
+    el.id = 'boot-error';
+    el.textContent = 'Three.js failed to load. Connect to the internet and reload.';
+    document.body.appendChild(el);
+    return;
+  }
+  bindInput();
+  const saved = Save.read();
+  if (TESTING) $('start-card').hidden = true;
+  else if (saved) {
+    $('btn-start').textContent = 'Continue the shift';
+    $('start-lead').textContent = 'Welcome back. You have ' + money(Math.max(0, Math.round(saved.cash))) + ' saved. Machines and crew are restored. Parts in your hands are not.';
+  }
+  let renderer;
+  try {
+    renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+  } catch (err) {
+    const el = document.createElement('pre');
+    el.id = 'boot-error';
+    el.textContent = 'This browser cannot start 3D graphics. Open the page in Chrome or Safari and reload.';
+    document.body.appendChild(el);
+    document.title = 'BOOT_FAIL';
+    return;
+  }
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.12;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.setClearColor(0x8eafc8);
+  document.body.insertBefore(renderer.domElement, document.body.firstChild);
+  const scene = new THREE.Scene();
+  scene.fog = new THREE.Fog(0x8eafc8, 62, 140);
+  scene.environment = makeEnvMap(renderer);
+  const camera = new THREE.PerspectiveCamera(CONFIG.cam.fov, window.innerWidth / window.innerHeight, 0.1, 180);
+  applyFov(camera);
+  scene.add(new THREE.HemisphereLight(0xc5d8ea, 0x6a5c4c, 0.55));
+  const sun = new THREE.DirectionalLight(0xfff1dd, 2.6);
+  sun.position.set(16, 28, 10);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(1024, 1024);
+  sun.shadow.bias = -0.0004;
+  sun.shadow.normalBias = 0.035;
+  sun.shadow.camera.near = 4;
+  sun.shadow.camera.far = 70;
+  sun.shadow.camera.left = -22;
+  sun.shadow.camera.right = 22;
+  sun.shadow.camera.top = 22;
+  sun.shadow.camera.bottom = -22;
+  scene.add(sun);
+  scene.add(sun.target);
+  scene.userData.sun = sun;
+  let game = new Game(scene, camera, saved ? { save: saved } : {});
+  game.paused = !TESTING;
+  window.__game = game;
+  const persist = () => { if (game && !game.paused) Save.write(game); };
+  document.addEventListener('visibilitychange', () => { if (document.hidden) persist(); });
+  window.addEventListener('pagehide', persist);
+  const raycaster = new THREE.Raycaster();
+  const ndc = new THREE.Vector2();
+  const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+  const groundHit = new THREE.Vector3();
+  let aim = null;
+  function groundAt(clientX, clientY) {
+    ndc.x = (clientX / window.innerWidth) * 2 - 1;
+    ndc.y = -(clientY / window.innerHeight) * 2 + 1;
+    raycaster.setFromCamera(ndc, camera);
+    if (!raycaster.ray.intersectPlane(groundPlane, groundHit)) return null;
+    return { x: groundHit.x, z: groundHit.z };
+  }
+  function pointerBlocked(e) {
+    if (e.button != null && e.button !== 0) return true;
+    if (e.target && e.target.closest && e.target.closest('#ui, #joy')) return true;
+    if (!$('start-card').hidden) return true;
+    if (!$('sheet').hidden) return true;
+    if ($('modal').classList.contains('show')) return true;
+    return false;
+  }
+  function machineAt(clientX, clientY) {
+    ndc.x = (clientX / window.innerWidth) * 2 - 1;
+    ndc.y = -(clientY / window.innerHeight) * 2 + 1;
+    raycaster.setFromCamera(ndc, camera);
+    const hits = raycaster.intersectObjects(game.machines.map((m) => m.root), true);
+    if (!hits.length) return null;
+    let o = hits[0].object;
+    while (o && !o.userData.machine) o = o.parent;
+    return o ? o.userData.machine : null;
+  }
+  window.addEventListener('pointerdown', (e) => {
+    if (pointerBlocked(e)) return;
+    const spot = groundAt(e.clientX, e.clientY);
+    if (!spot) return;
+    aim = { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now(), moved: false, gx: spot.x, gz: spot.z };
+  });
+  window.addEventListener('pointermove', (e) => {
+    if (!aim || e.pointerId !== aim.id) return;
+    const spot = groundAt(e.clientX, e.clientY);
+    if (!spot) return;
+    const dx = e.clientX - aim.x;
+    const dy = e.clientY - aim.y;
+    if (dx * dx + dy * dy > 36) aim.moved = true;
+    aim.gx = spot.x;
+    aim.gz = spot.z;
+    if (aim.moved) Input.pointer = { x: spot.x, z: spot.z };
+  });
+  function endAim(e) {
+    if (!aim || e.pointerId !== aim.id) return;
+    const held = aim;
+    aim = null;
+    const dt = performance.now() - held.t;
+    if (!held.moved && dt < 450) {
+      const machine = machineAt(e.clientX, e.clientY);
+      if (machine) {
+        Input.pointer = null;
+        machine.cycleMode();
+        return;
+      }
+      Input.pointer = { x: held.gx, z: held.gz };
+      return;
+    }
+    Input.pointer = null;
+  }
+  window.addEventListener('pointerup', endAim);
+  window.addEventListener('pointercancel', endAim);
+  window.addEventListener('resize', () => {
+    applyFov(camera);
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+  let last = performance.now();
+  let hidden = false;
+  document.addEventListener('visibilitychange', () => { hidden = document.hidden; });
+  function frame(now) {
+    requestAnimationFrame(frame);
+    const dt = Math.min(0.05, (now - last) / 1000);
+    last = now;
+    if (!hidden) {
+      if (game.pendingPrestige) {
+        const prestige = game.econ.prestige + CONFIG.prestigeStep;
+        const lifetime = game.econ.lifetime;
+        game.unmount();
+        game = new Game(scene, camera, { prestige, lifetime });
+        window.__game = game;
+        Save.write(game);
+      }
+      if (!game.paused) game.update(dt);
+    }
+    renderer.render(scene, camera);
+  }
+  requestAnimationFrame(frame);
+  window.__runTests = () => runTests(game);
+  if (location.search.indexOf('test=1') >= 0) {
+    // Let one frame establish camera matrices, then run the deterministic sim.
+    requestAnimationFrame(() => {
+      try {
+        const result = runTests(window.__game);
+        const pre = document.createElement('pre');
+        pre.id = 'test-result';
+        pre.style.cssText = 'position:fixed;left:0;bottom:0;z-index:20;background:#fff;color:#102;padding:8px;font:12px/1.35 ui-monospace,monospace;max-height:45vh;overflow:auto;margin:0';
+        pre.textContent = result;
+        document.body.appendChild(pre);
+        document.title = result.indexOf('TEST_OK') === 0 ? 'TEST_OK' : 'TEST_FAIL';
+      } catch (err) {
+        document.title = 'TEST_FAIL';
+        const pre = document.createElement('pre');
+        pre.id = 'test-result';
+        pre.textContent = 'TEST_FAIL\n' + err.stack;
+        document.body.appendChild(pre);
+      }
+    });
+  }
+}
+
+function runTests(g) {
+  const errors = [];
+  const assert = (cond, msg) => { if (!cond) errors.push(msg); };
+  // Facing formula: local -z must map onto +x when yaw = atan2(-1, 0) = -PI/2.
+  const probe = new THREE.Object3D();
+  probe.rotation.y = faceYaw(1, 0);
+  const fwd = new THREE.Vector3(0, 0, -1).applyQuaternion(probe.quaternion);
+  assert(fwd.dot(new THREE.Vector3(1, 0, 0)) > 0.99, 'faceYaw +x got ' + fwd.x.toFixed(2) + ',' + fwd.z.toFixed(2));
+
+  g.update(1 / 60);
+  // Pads the player is meant to stand on are inside the shop and not inside a solid.
+  g.pads.forEach((p) => {
+    if (p.cfg && p.cfg.requires && p.cfg.requires.length) return;
+    if (!p.active()) return;
+    const walk = g.inside(p.x, p.z, CONFIG.player.radius) && !g.blocked(p.x, p.z, CONFIG.player.radius);
+    assert(walk, 'pad blocked ' + (p.kind || (p.cfg && p.cfg.id)) + ' @' + p.x.toFixed(2) + ',' + p.z.toFixed(2));
+  });
+
+  g.player.root.position.set(-1, 0, 3);
+  g.look.copy(g.player.root.position);
+  g.updateCamera(1 / 60);
+  const basis = g.cameraBasis();
+  const p0 = g.player.root.position.clone();
+  Input.force = { x: 0, y: 1 };
+  for (let i = 0; i < 30; i++) g.update(1 / 60);
+  const d = g.player.root.position.clone().sub(p0);
+  d.y = 0;
+  const dir = d.clone().normalize();
+  assert(dir.dot(g.cameraBasis().fwd) > 0.85, 'W moved off camera-forward ' + dir.dot(basis.fwd).toFixed(2));
+  const facing = new THREE.Vector3(0, 0, -1).applyQuaternion(g.player.person.visual.quaternion);
+  assert(facing.dot(dir) > 0.85, 'player faces away from travel ' + facing.dot(dir).toFixed(2));
+  const head = g.player.person.head.getWorldPosition(new THREE.Vector3());
+  const nose = g.player.person.nose.getWorldPosition(new THREE.Vector3()).sub(head);
+  nose.y = 0; nose.normalize();
+  assert(nose.dot(facing) > 0.8, 'nose is not on the front ' + nose.dot(facing).toFixed(2));
+
+  const p1 = g.player.root.position.clone();
+  Input.force = { x: 1, y: 0 };
+  for (let i = 0; i < 20; i++) g.update(1 / 60);
+  const side = g.player.root.position.clone().sub(p1);
+  side.y = 0; side.normalize();
+  assert(side.dot(g.cameraBasis().right) > 0.85, 'D moved off camera-right ' + side.dot(g.cameraBasis().right).toFixed(2));
+  Input.force = null;
+
+  // Click-to-move walks in world space toward the ground point, then faces that travel.
+  g.player.root.position.set(0, 0, 1);
+  g.look.copy(g.player.root.position);
+  g.updateCamera(1 / 60);
+  Input.pointer = { x: 0, z: -2 };
+  const pp = g.player.root.position.clone();
+  for (let i = 0; i < 20; i++) g.update(1 / 60);
+  const pd = g.player.root.position.clone().sub(pp);
+  pd.y = 0;
+  assert(pd.z < -1.2, 'click-move did not approach the point ' + pd.z.toFixed(2));
+  assert(Math.abs(pd.x) < 0.35, 'click-move drifted off the point ' + pd.x.toFixed(2));
+  const clickFacing = new THREE.Vector3(0, 0, -1).applyQuaternion(g.player.person.visual.quaternion);
+  const travel = pd.clone().normalize();
+  assert(clickFacing.dot(travel) > 0.85, 'click-move faces off travel ' + clickFacing.dot(travel).toFixed(2));
+  const clickHead = g.player.person.head.getWorldPosition(new THREE.Vector3());
+  const clickNose = g.player.person.nose.getWorldPosition(new THREE.Vector3()).sub(clickHead);
+  clickNose.y = 0;
+  clickNose.normalize();
+  assert(clickNose.dot(clickFacing) > 0.8, 'nose left the front while click-moving');
+  assert(g.marker.visible, 'click marker hidden');
+  Input.pointer = null;
+  g.marker.visible = false;
+  Input.force = { x: 0, y: 0 };
+
+  // Economy loop: rack -> mill -> counter -> cash. Teleport so the test is about rules, not pathing.
+  const rack = g.station('rack');
+  g.player.root.position.set(rack.pad.x, 0, rack.pad.z);
+  for (let i = 0; i < 20; i++) g.update(1 / 60);
+  assert(g.player.carry.length >= 1 && g.player.carry[0].kind === 'stock', 'rack did not give stock');
+  const beforeItems = g.liveItems.length;
+
+  const mill = g.machines[0];
+  g.player.root.position.set(mill.inPad.x, 0, mill.inPad.z);
+  for (let i = 0; i < 40; i++) g.update(1 / 60);
+  assert(mill.state === 'run' || mill.output.length > 0 || mill.made > 0, 'mill did not start');
+  if (mill.state === 'run') { mill.timer = mill.cycle; g.update(1 / 60); }
+  assert(mill.output.some((it) => it.kind === 'part' && it.partId === 'bracket') || g.player.carry.some((it) => it.partId === 'bracket'), 'no bracket produced');
+  assert(g.liveItems.indexOf(null) < 0, 'null item');
+
+  // Put the bracket in hand if it is still on the output.
+  if (!g.player.carry.some((it) => it.partId === 'bracket')) {
+    g.player.root.position.set(mill.outPad.x, 0, mill.outPad.z);
+    for (let i = 0; i < 30; i++) g.update(1 / 60);
+  }
+  assert(g.player.carry.some((it) => it.partId === 'bracket'), 'player never received the bracket');
+
+  const client = g.clients[0];
+  client.order.partId = 'bracket';
+  client.order.need = 1;
+  client.held = [];
+  client.patience = 90;
+  client.root.position.set(g.queueSlot(0).x, 0, g.queueSlot(0).z);
+  client.inPlace = true;
+  client.leaving = false;
+  g.player.root.position.set(g.counter.serve.x, 0, g.counter.serve.z);
+  for (let i = 0; i < 40; i++) g.update(1 / 60);
+  assert(g.servedOnce || g.cashPiles.length > 0 || client.leaving, 'client was not served');
+  const pile = g.cashPiles[0];
+  assert(pile && pile.value > 0, 'no cash pile');
+  const cashBefore = g.econ.cash;
+  g.player.root.position.set(g.counter.cash.x, 0, g.counter.cash.z);
+  for (let i = 0; i < 30; i++) g.update(1 / 60);
+  assert(g.econ.cash > cashBefore, 'cash was not collected');
+
+  // Unlock drain conserves integer cash.
+  const boot = CONFIG.unlocks[0]._rec;
+  g.econ.cash = 5;
+  const start = g.econ.cash + boot.paid;
+  g.player.root.position.set(boot.x, 0, boot.z);
+  g.update(0.5);
+  assert(g.econ.cash + boot.paid === start, 'unlock leaked cash ' + (g.econ.cash + boot.paid) + ' vs ' + start);
+
+  // Blocked machine does not eat stock.
+  const guard = g.createItem('stock');
+  mill.input.length = 0;
+  mill.output.length = 0;
+  mill.working = null;
+  mill.state = 'idle';
+  const savedCap = mill.outCap;
+  mill.outCap = 0;
+  mill.input.push(guard);
+  mill.update(1 / 60);
+  assert(mill.input.indexOf(guard) >= 0 && mill.working !== guard, 'stock vanished while blocked');
+  mill.outCap = savedCap;
+  mill.input.length = 0;
+  // Gear two-step: blank on the lathe becomes a gear. Build a temporary lathe if needed.
+  g.flags.lathe = true;
+  g.flags.gear = true;
+  let lathe = g.machines.find((m) => m.machineType === 'lathe');
+  if (!lathe) {
+    lathe = new Machine(g, 'lathe', 5.15, -4.7, 'lathe-test');
+    g.machines.push(lathe);
+  }
+  const blank = g.createItem('blank', 'gear');
+  lathe.input.push(blank);
+  lathe.state = 'idle';
+  lathe.tryStart();
+  assert(lathe.state === 'run' && lathe.recipe && lathe.recipe.partId === 'gear', 'lathe did not accept a gear blank');
+  lathe.timer = lathe.cycle;
+  lathe.update(0.016);
+  assert(lathe.output.some((it) => it.kind === 'part' && it.partId === 'gear'), 'blank did not become a gear');
+
+  // Client can reach the queue from the door.
+  const walker = new Client(g, { partId: 'bracket', need: 1 }, {
+    payMult: 1, patience: 40, shirt: 0x118ab2, hat: 0x333333, x: 8.2, z: 7.6
+  });
+  g.clients.push(walker);
+  g.assignSlots();
+  const slot = g.queueSlot(walker.slot);
+  walker.root.position.set(slot.x + 1.3, 0, slot.z + 0.4);
+  for (let i = 0; i < 150; i++) walker.update(1 / 60);
+  const qd = Math.hypot(walker.root.position.x - slot.x, walker.root.position.z - slot.z);
+  assert(qd < 0.4 || walker.inPlace, 'client stuck ' + qd.toFixed(2) + ' from slot');
+
+  function walkTo(x, zz, tx, tz) {
+    const pos = { x: x, z: zz };
+    for (let i = 0; i < 500; i++) {
+      const dx = tx - pos.x;
+      const dz = tz - pos.z;
+      const dist = Math.hypot(dx, dz);
+      if (dist < 0.35) return true;
+      const step = Math.min(0.18, dist);
+      g.moveBody(pos, (dx / dist) * step, (dz / dist) * step, CONFIG.player.radius);
+    }
+    return false;
+  }
+  assert(walkTo(rack.pad.x, rack.pad.z, mill.inPad.x, mill.inPad.z), 'route rack to mill');
+  assert(walkTo(mill.outPad.x, mill.outPad.z, g.counter.serve.x, g.counter.serve.z), 'route mill to counter');
+  g.flags.workshop = true;
+  assert(walkTo(-7.4, 1, -15.2, -3.1), 'route into workshop');
+  g.flags.factory = true;
+  assert(walkTo(3, -2, 3, -12), 'route into factory');
+  g.flags.industrial = true;
+  assert(walkTo(7.2, 2, 15, 3.2), 'route into plant');
+
+  // Items created above are still tracked or retired, never duplicated.
+  const ids = g.liveItems.map((it) => it.id);
+  assert(new Set(ids).size === ids.length, 'duplicate item ids');
+  assert(beforeItems > 0, 'item tracker empty');
+
+  g.player.root.position.set(0, 0, 0.35);
+  Input.force = null;
+
+  // Restore probe. A second shop must not keep the shared unlock records.
+  const keptRecs = CONFIG.unlocks.map((u) => u._rec);
+  const soundBefore = Input.soundWanted;
+  const restored = new Game(g.scene, g.camera, {
+    save: {
+      v: 1, cash: 4321, runEarned: 900, lifetime: 12000, prestige: 1.25, level: 3, servedOnce: true,
+      levels: { speed: 1, carry: 2 },
+      flags: { boot: true, lathe: true, operator: true, workshop: true, dock: true, office: true },
+      paid: { carry: 9 },
+      workers: { operator: 2 },
+      sound: false
+    }
+  });
+  assert(restored.econ.cash === 4321, 'restore cash ' + restored.econ.cash);
+  assert(restored.econ.prestige === 1.25, 'restore prestige');
+  assert(restored.econ.levels.speed === 1, 'boots did not double speed ' + restored.econ.levels.speed);
+  assert(restored.flags.lathe && restored.machines.some((m) => m.machineType === 'lathe'), 'lathe rebuilt');
+  assert(restored.flags.workshop && restored.inside(-15, 1, 0.4), 'workshop walkable after restore');
+  assert(restored.dock && restored.dock.pad && restored.dock.pad.x === 15.3, 'dock rebuilt');
+  assert(restored.officePos && restored.flags.office, 'office rebuilt');
+  assert(restored.workers.filter((w) => w.role === 'operator').length === 2, 'operator count');
+  const carryRec = CONFIG.unlocks.find((u) => u.id === 'carry')._rec;
+  assert(carryRec && carryRec.paid === 9 && !carryRec.done, 'partial pad ' + (carryRec && carryRec.paid));
+  assert(restored.tutorial.t >= 120, 'tutorial still on for a saved shop');
+  assert(restored.ui.milestoneQ.length === 0, 'quiet restore popped a milestone');
+  const again = restored.exportState();
+  assert(again.cash === 4321 && again.flags.dock && again.flags.office && again.workers.operator === 2, 'round-trip export');
+  restored.unmount();
+  CONFIG.unlocks.forEach((u, i) => { u._rec = keptRecs[i]; });
+  Input.soundWanted = soundBefore;
+  $('btn-sound').textContent = soundBefore ? 'Sound on' : 'Sound off';
+  g.ui.cashShown = '';
+  g.ui.update();
+
+  return errors.length ? ('TEST_FAIL\n' + errors.join('\n')) : 'TEST_OK ' + errors.length;
+}
+
+try {
+  boot();
+} catch (err) {
+  var el = document.createElement('pre');
+  el.id = 'boot-error';
+  el.textContent = (err && err.stack) ? err.stack : String(err);
+  document.body.appendChild(el);
+  document.title = 'BOOT_FAIL';
+}
+</script>
+</body>
+</html>
