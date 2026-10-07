@@ -2,7 +2,7 @@
 
 A 3D machine-shop tycoon in one HTML file. You carry stock, run the mills, serve the client, and spend the cash until the garage becomes a plant.
 
-**Play it:** https://cnc-ready-mystof-realm-s-projects.vercel.app
+**Play it:** https://cnc-ready.vercel.app
 
 The whole game is [`index.html`](index.html). Open that file in a desktop browser, or use the link above. The page loads Three.js r160 from cdnjs, so the first load needs a network connection.
 
@@ -117,8 +117,10 @@ Rendering uses Three.js r160 (`three.min.js` from cdnjs), MeshStandard materials
 
 ## Deploy
 
-The live site is a Vercel project named `cnc-ready` on the MystofRealm team. Production:
+The live site is the Vercel project `cnc-ready` on the MystofRealm team. Production:
 
-https://cnc-ready-mystof-realm-s-projects.vercel.app
+https://cnc-ready.vercel.app
 
-Pushing `main` deploys that site when the GitHub repository is connected to the Vercel project. The site is a static `index.html`. No install or build command is required.
+The same site is also at https://cnc-ready-mystof-realm-s-projects.vercel.app.
+
+Source for that project is this repository, `TaarakChauhan/cnc-ready`, branch `main`. The site is a static `index.html`. No install or build command is required. A push to `main` deploys production when the Git connection is active.
